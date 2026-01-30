@@ -1,14 +1,14 @@
+import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   FlatList,
   Modal,
+  StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
 
 const COLORS = {
   BACKGROUND: '#1E1E1E',
@@ -21,49 +21,88 @@ const COLORS = {
 
 export const layout = () => <Stack screenOptions={{ headerShown: false }} />;
 
-interface Workout {
+interface Exercise {
   id: number;
   name: string;
   type: string;
 }
 
+interface WorkoutPayload {
+  name: string;
+  exercises: Exercise[];
+}
+
 export default function AddWorkoutScreen() {
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [myWorkout, setMyWorkout] = useState<Workout[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [myWorkout, setMyWorkout] = useState<Exercise[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [filterText, setFilterText] = useState('');
+  const [workoutName, setWorkoutName] = useState('');
 
   const router = useRouter();
 
+  // Fetch all exercises from backend
   useEffect(() => {
-    fetch('http://localhost:8080/api/workouts')
+    fetch('http://localhost:8080/api/workouts/exercises')
       .then((res) => res.json())
-      .then((data) => setWorkouts(data))
+      .then((data) => setExercises(data))
       .catch((err) => console.error(err));
   }, []);
 
-  const addWorkout = (workout: Workout) => {
-    if (!myWorkout.find((w) => w.id === workout.id)) {
-      setMyWorkout([...myWorkout, workout]);
+
+  const addExercise = (exercise: Exercise) => {
+    if (!myWorkout.find((e) => e.id === exercise.id)) {
+      setMyWorkout([...myWorkout, exercise]);
     }
   };
 
-  const removeWorkout = (id: number) => {
-    setMyWorkout(myWorkout.filter((w) => w.id !== id));
+  const removeExercise = (id: number) => {
+    setMyWorkout(myWorkout.filter((e) => e.id !== id));
   };
 
-  const filteredWorkouts = workouts.filter((w) =>
-    w.name.toLowerCase().includes(filterText.toLowerCase())
+  // Finish workout and post to backend
+  const finishWorkout = () => {
+    if (!workoutName) {
+      alert('Please enter a workout name!');
+      return;
+    }
+    if (myWorkout.length === 0) {
+      alert('Add at least one exercise!');
+      return;
+    }
+
+    const payload: WorkoutPayload = {
+      name: workoutName,
+      exercises: myWorkout,
+    };
+
+    fetch('http://localhost:8080/api/workouts/user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => res.json())
+      .then((savedWorkout) => {
+        console.log('Workout saved:', savedWorkout);
+        setMyWorkout([]);
+        setWorkoutName('');
+        router.back(); 
+      })
+      .catch((err) => console.error('Save error:', err));
+  };
+
+  const filteredExercises = exercises.filter((e) =>
+    e.name.toLowerCase().includes(filterText.toLowerCase())
   );
 
-  const renderMyWorkout = ({ item }: { item: Workout }) => (
+  const renderMyWorkout = ({ item }: { item: Exercise }) => (
     <View style={styles.cardRow}>
       <Text style={styles.cardText}>
         {item.name} ({item.type})
       </Text>
       <TouchableOpacity
         style={styles.removeButton}
-        onPress={() => removeWorkout(item.id)}
+        onPress={() => removeExercise(item.id)}
       >
         <Text style={styles.removeText}>Remove</Text>
       </TouchableOpacity>
@@ -72,7 +111,16 @@ export default function AddWorkoutScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Workout</Text>
+      <Text style={styles.title}>Workout Name</Text>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Enter workout name..."
+        placeholderTextColor="#aaa"
+        value={workoutName}
+        onChangeText={setWorkoutName}
+      />
+
+      <Text style={styles.title}>My Exercises</Text>
       <FlatList
         data={myWorkout}
         keyExtractor={(item) => item.id.toString()}
@@ -98,7 +146,7 @@ export default function AddWorkoutScreen() {
       >
         <View style={styles.modalBackground}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>All Workouts</Text>
+            <Text style={styles.modalTitle}>All Exercises</Text>
             <TextInput
               style={styles.searchInput}
               placeholder="Search exercise..."
@@ -107,12 +155,12 @@ export default function AddWorkoutScreen() {
               onChangeText={setFilterText}
             />
             <FlatList
-              data={filteredWorkouts}
+              data={filteredExercises}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.card}
-                  onPress={() => addWorkout(item)}
+                  onPress={() => addExercise(item)}
                 >
                   <Text style={styles.cardText}>
                     {item.name} ({item.type})
@@ -132,7 +180,7 @@ export default function AddWorkoutScreen() {
 
       <TouchableOpacity
         style={[styles.finishButton, { marginTop: 20 }]}
-        onPress={() => router.back()}
+        onPress={finishWorkout}
       >
         <Text style={styles.finishText}>Finish Workout</Text>
       </TouchableOpacity>
