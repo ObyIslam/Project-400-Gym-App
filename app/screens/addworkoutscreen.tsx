@@ -2,7 +2,9 @@ import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
+  Image,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -24,7 +26,9 @@ export const layout = () => <Stack screenOptions={{ headerShown: false }} />;
 interface Exercise {
   id: number;
   name: string;
-  type: string;
+  category: string;
+  description?: string | null;
+  gifUrl?: string | null; 
 }
 
 interface WorkoutPayload {
@@ -40,15 +44,17 @@ export default function AddWorkoutScreen() {
   const [workoutName, setWorkoutName] = useState('');
 
   const router = useRouter();
+  const API_BASE = 'http://localhost:8080';
 
-  // Fetch all exercises from backend
   useEffect(() => {
-    fetch('http://localhost:8080/api/workouts/exercises')
+    fetch(`${API_BASE}/api/workouts/exercises`)
       .then((res) => res.json())
-      .then((data) => setExercises(data))
-      .catch((err) => console.error(err));
+      .then((data) => {
+        if (Array.isArray(data)) setExercises(data);
+        else console.error('Unexpected data format', data);
+      })
+      .catch((err) => console.error('Fetch exercises error:', err));
   }, []);
-
 
   const addExercise = (exercise: Exercise) => {
     if (!myWorkout.find((e) => e.id === exercise.id)) {
@@ -60,52 +66,61 @@ export default function AddWorkoutScreen() {
     setMyWorkout(myWorkout.filter((e) => e.id !== id));
   };
 
-  // Finish workout and post to backend
   const finishWorkout = () => {
-    if (!workoutName) {
-      alert('Please enter a workout name!');
-      return;
-    }
-    if (myWorkout.length === 0) {
-      alert('Add at least one exercise!');
-      return;
-    }
+    if (!workoutName) return alert('Please enter a workout name!');
+    if (myWorkout.length === 0) return alert('Add at least one exercise!');
 
-    const payload: WorkoutPayload = {
-      name: workoutName,
-      exercises: myWorkout,
-    };
+    const payload: WorkoutPayload = { name: workoutName, exercises: myWorkout };
 
-    fetch('http://localhost:8080/api/workouts/user', {
+    fetch(`${API_BASE}/api/workouts/user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
       .then((res) => res.json())
-      .then((savedWorkout) => {
-        console.log('Workout saved:', savedWorkout);
+      .then(() => {
         setMyWorkout([]);
         setWorkoutName('');
-        router.back(); 
+        router.back();
       })
       .catch((err) => console.error('Save error:', err));
   };
 
-  const filteredExercises = exercises.filter((e) =>
-    e.name.toLowerCase().includes(filterText.toLowerCase())
+  const filteredExercises = exercises.filter(
+    (e) => e.name && e.name.toLowerCase().includes(filterText.toLowerCase())
   );
 
-  const renderMyWorkout = ({ item }: { item: Exercise }) => (
-    <View style={styles.cardRow}>
-      <Text style={styles.cardText}>
-        {item.name} ({item.type})
-      </Text>
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => removeExercise(item.id)}
-      >
-        <Text style={styles.removeText}>Remove</Text>
-      </TouchableOpacity>
+  const renderExerciseCard = (item: Exercise, showRemove = false) => (
+    <View style={styles.card}>
+      {item.gifUrl ? (
+        <Image
+          source={{ uri: item.gifUrl }}
+          style={{ width: 200, height: 200 }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.imagePlaceholder}>
+          <Text style={{ color: '#aaa' }}>No Image</Text>
+        </View>
+      )}
+
+      <Text style={styles.cardText}>{item.name || 'No Name'}</Text>
+      <Text style={styles.categoryText}>{item.category || 'No Category'}</Text>
+
+      {item.description && (
+        <ScrollView style={styles.descriptionContainer}>
+          <Text style={styles.descriptionText}>{item.description}</Text>
+        </ScrollView>
+      )}
+
+      {showRemove && (
+        <TouchableOpacity
+          style={styles.removeButton}
+          onPress={() => removeExercise(item.id)}
+        >
+          <Text style={styles.removeText}>Remove</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -124,8 +139,7 @@ export default function AddWorkoutScreen() {
       <FlatList
         data={myWorkout}
         keyExtractor={(item) => item.id.toString()}
-        renderItem={renderMyWorkout}
-        style={styles.list}
+        renderItem={({ item }) => renderExerciseCard(item, true)}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No exercises added yet.</Text>
         }
@@ -147,6 +161,7 @@ export default function AddWorkoutScreen() {
         <View style={styles.modalBackground}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>All Exercises</Text>
+
             <TextInput
               style={styles.searchInput}
               placeholder="Search exercise..."
@@ -154,20 +169,17 @@ export default function AddWorkoutScreen() {
               value={filterText}
               onChangeText={setFilterText}
             />
+
             <FlatList
               data={filteredExercises}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.card}
-                  onPress={() => addExercise(item)}
-                >
-                  <Text style={styles.cardText}>
-                    {item.name} ({item.type})
-                  </Text>
+                <TouchableOpacity onPress={() => addExercise(item)}>
+                  {renderExerciseCard(item)}
                 </TouchableOpacity>
               )}
             />
+
             <TouchableOpacity
               style={styles.finishButton}
               onPress={() => setModalVisible(false)}
@@ -190,76 +202,22 @@ export default function AddWorkoutScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.BACKGROUND, padding: 20 },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.TEXT,
-    marginVertical: 10,
-  },
-  list: { marginBottom: 20 },
-  card: {
-    backgroundColor: COLORS.CARD,
-    padding: 15,
-    marginBottom: 10,
-    borderRadius: 10,
-  },
-  cardText: { color: COLORS.TEXT, fontWeight: 'bold', fontSize: 16 },
-  cardRow: {
-    backgroundColor: COLORS.CARD,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    marginBottom: 10,
-    borderRadius: 10,
-  },
-  removeButton: {
-    backgroundColor: COLORS.REMOVE_BG,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-  },
+  title: { fontSize: 22, fontWeight: 'bold', color: COLORS.TEXT, marginVertical: 10 },
+  card: { backgroundColor: COLORS.CARD, padding: 15, marginBottom: 12, borderRadius: 12 },
+  cardText: { color: COLORS.TEXT, fontWeight: 'bold', fontSize: 16, marginTop: 6 },
+  categoryText: { color: '#aaa', fontSize: 14, marginTop: 2 },
+  descriptionContainer: { maxHeight: 100, marginTop: 6 },
+  descriptionText: { color: '#ccc', fontSize: 14 },
+  exerciseImage: { width: '100%', height: 160, borderRadius: 10 },
+  imagePlaceholder: { width: '100%', height: 160, borderRadius: 10, backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' },
+  removeButton: { backgroundColor: COLORS.REMOVE_BG, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, marginTop: 10, alignSelf: 'flex-start' },
   removeText: { color: COLORS.TEXT, fontWeight: 'bold' },
-  finishButton: {
-    backgroundColor: COLORS.BUTTON_BG,
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
+  finishButton: { backgroundColor: COLORS.BUTTON_BG, padding: 15, borderRadius: 10, alignItems: 'center' },
   finishText: { color: COLORS.BUTTON_TEXT, fontWeight: 'bold', fontSize: 16 },
-  addButton: {
-    backgroundColor: COLORS.BUTTON_BG,
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalBackground: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: '90%',
-    maxHeight: '80%',
-    backgroundColor: COLORS.BACKGROUND,
-    borderRadius: 10,
-    padding: 20,
-  },
-  modalTitle: {
-    color: COLORS.TEXT,
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  searchInput: {
-    backgroundColor: COLORS.CARD,
-    color: COLORS.TEXT,
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
+  addButton: { backgroundColor: COLORS.BUTTON_BG, padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 20 },
+  modalBackground: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  modalContainer: { width: '90%', maxHeight: '85%', backgroundColor: COLORS.BACKGROUND, borderRadius: 12, padding: 20 },
+  modalTitle: { color: COLORS.TEXT, fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+  searchInput: { backgroundColor: COLORS.CARD, color: COLORS.TEXT, padding: 10, borderRadius: 8, marginBottom: 10 },
   emptyText: { color: COLORS.TEXT, fontStyle: 'italic', textAlign: 'center' },
 });
