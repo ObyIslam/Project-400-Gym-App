@@ -1,129 +1,291 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  FlatList,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 const COLORS = {
-  BACKGROUND_DARK: '#1E1E1E',
-  CONTENT_CARD: '#333333',
-  TEXT_LIGHT: '#FFFFFF',
+  BG: '#121212',
+  CARD: '#1E1E1E',
+  CARD_2: '#242424',
+  BORDER: '#2E2E2E',
+  TEXT: '#FFFFFF',
+  MUTED: '#A9A9A9',
+  ACCENT: '#357be6',
 };
 
 interface Exercise {
   id: number;
   name: string;
-  type: string;
+  category?: string | null;
 }
 
 interface Workout {
   id: number;
   name: string | null;
+  finished?: boolean;
   exercises: Exercise[];
 }
 
+const API_BASE =
+  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
+
 export default function HomeScreen() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetch('http://localhost:8080/api/workouts/user')
+  const loadWorkouts = () => {
+    return fetch(`${API_BASE}/api/workouts/user`)
       .then((res) => res.json())
       .then((data: Workout[]) => {
-        setWorkouts(data);
+        if (Array.isArray(data)) setWorkouts(data);
+        else console.error('Unexpected workouts response', data);
       })
       .catch((err) => console.error('Error fetching workouts:', err));
+  };
+
+  useEffect(() => {
+    loadWorkouts();
   }, []);
 
-  const renderExercise = ({ item }: { item: Exercise }) => (
-    <Text style={styles.exerciseText}>
-      - {item.name} ({item.type})
-    </Text>
-  );
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadWorkouts();
+    setRefreshing(false);
+  };
 
-  const renderWorkout = ({ item, index }: { item: Workout; index: number }) => (
-    <View style={styles.workoutCard}>
-      <Text style={styles.workoutTitle}>
-        {item.name ? item.name : `Workout ${index + 1}`}
+  const stats = useMemo(() => {
+    const totalWorkouts = workouts.length;
+    const totalExercises = workouts.reduce((sum, w) => sum + (w.exercises?.length ?? 0), 0);
+    return { totalWorkouts, totalExercises };
+  }, [workouts]);
+
+  const renderExercise = ({ item }: { item: Exercise }) => (
+    <View style={styles.exerciseRow}>
+      <View style={styles.bullet} />
+      <Text numberOfLines={1} style={styles.exerciseText}>
+        {item.name || 'Unnamed exercise'}
       </Text>
-      <FlatList
-        data={item.exercises}
-        keyExtractor={(ex) => ex.id.toString()}
-        renderItem={renderExercise}
-      />
+      {!!item.category && (
+        <View style={styles.pill}>
+          <Text style={styles.pillText}>{item.category}</Text>
+        </View>
+      )}
     </View>
   );
 
+  const renderWorkout = ({ item, index }: { item: Workout; index: number }) => {
+    const title = item.name?.trim() ? item.name : `Workout ${index + 1}`;
+    const count = item.exercises?.length ?? 0;
+
+    return (
+      <View style={styles.workoutCard}>
+        <View style={styles.workoutHeader}>
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={styles.workoutTitle}>
+              {title}
+            </Text>
+            <Text style={styles.workoutMeta}>
+              {count} {count === 1 ? 'exercise' : 'exercises'}
+            </Text>
+          </View>
+
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{count}</Text>
+          </View>
+        </View>
+
+        {count === 0 ? (
+          <Text style={styles.emptyExercisesText}>No exercises saved.</Text>
+        ) : (
+          <FlatList
+            data={item.exercises}
+            keyExtractor={(ex) => ex.id.toString()}
+            renderItem={renderExercise}
+            scrollEnabled={false}
+            contentContainerStyle={{ paddingTop: 8 }}
+          />
+        )}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* Title Bar */}
-      <View style={styles.titleBar}>
-        <Text style={styles.titleText}>Profile Page</Text>
+      <View style={styles.topBar}>
+        <Text style={styles.topTitle}>Home</Text>
       </View>
 
-      {/* Workouts */}
-      <ScrollView style={styles.workoutsContainer}>
-        <Text style={styles.pageTitle}>Previous Workouts</Text>
-        <FlatList
-          data={workouts}
-          keyExtractor={(w) => w.id.toString()}
-          renderItem={renderWorkout}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No workouts logged yet.</Text>
-          }
-        />
-      </ScrollView>
+      <FlatList
+        data={workouts}
+        keyExtractor={(w) => w.id.toString()}
+        renderItem={renderWorkout}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.TEXT}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyTitle}>No workouts yet</Text>
+            <Text style={styles.emptySub}>
+              Create a workout to see it here.
+            </Text>
+          </View>
+        }
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.BACKGROUND_DARK,
-  },
-  titleBar: {
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.CONTENT_CARD,
+  container: { flex: 1, backgroundColor: COLORS.BG },
+
+  topBar: {
+    paddingTop: 18,
+    paddingBottom: 14,
+    paddingHorizontal: 18,
     borderBottomWidth: 1,
-    paddingTop: 10,
+    borderBottomColor: COLORS.BORDER,
+    backgroundColor: COLORS.BG,
   },
-  titleText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_LIGHT,
-    marginBottom: 10,
+
+  topTitle: {
+    color: COLORS.TEXT,
+    fontSize: 28,
+    fontWeight: '900',
   },
-  workoutsContainer: {
-    flex: 1,
-    padding: 20,
+
+  topSubtitle: {
+    marginTop: 4,
+    color: COLORS.MUTED,
+    fontSize: 13,
+    fontWeight: '600',
   },
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_LIGHT,
-    marginBottom: 15,
+
+  listContent: {
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 18,
   },
+
   workoutCard: {
-    backgroundColor: COLORS.CONTENT_CARD,
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
   },
+
+  workoutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
   workoutTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_LIGHT,
-    marginBottom: 8,
-  },
-  exerciseText: {
-    color: COLORS.TEXT_LIGHT,
+    color: COLORS.TEXT,
     fontSize: 16,
-    marginLeft: 5,
-    marginBottom: 4,
+    fontWeight: '900',
   },
-  emptyText: {
-    color: COLORS.TEXT_LIGHT,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginTop: 20,
+
+  workoutMeta: {
+    marginTop: 4,
+    color: COLORS.MUTED,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  countBadge: {
+    minWidth: 34,
+    height: 34,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  countBadgeText: {
+    color: COLORS.TEXT,
+    fontWeight: '900',
+    fontSize: 13,
+  },
+
+  exerciseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
+    gap: 10,
+  },
+
+  bullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: COLORS.ACCENT,
+  },
+
+  exerciseText: {
+    flex: 1,
+    color: COLORS.TEXT,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  pill: {
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+
+  pillText: {
+    color: COLORS.MUTED,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  emptyExercisesText: {
+    marginTop: 10,
+    color: COLORS.MUTED,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  emptyWrap: {
+    marginTop: 40,
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 16,
+    padding: 16,
+  },
+
+  emptyTitle: {
+    color: COLORS.TEXT,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+
+  emptySub: {
+    marginTop: 6,
+    color: COLORS.MUTED,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

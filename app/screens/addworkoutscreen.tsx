@@ -1,10 +1,11 @@
 import { Stack, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Modal,
-  ScrollView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -13,12 +14,15 @@ import {
 } from 'react-native';
 
 const COLORS = {
-  BACKGROUND: '#1E1E1E',
-  CARD: '#2A2A2A',
+  BG: '#121212',
+  CARD: '#1E1E1E',
+  CARD_2: '#242424',
+  BORDER: '#2E2E2E',
   TEXT: '#FFFFFF',
-  BUTTON_BG: '#357be6',
-  BUTTON_TEXT: '#FFFFFF',
-  REMOVE_BG: '#E74C3C',
+  MUTED: '#A9A9A9',
+  ACCENT: '#357be6',
+  ACCENT_TEXT: '#FFFFFF',
+  DANGER: '#E74C3C',
 };
 
 export const layout = () => <Stack screenOptions={{ headerShown: false }} />;
@@ -28,7 +32,7 @@ interface Exercise {
   name: string;
   category: string;
   description?: string | null;
-  gifUrl?: string | null; 
+  imageUrl?: string | null;
 }
 
 interface WorkoutPayload {
@@ -36,188 +40,553 @@ interface WorkoutPayload {
   exercises: Exercise[];
 }
 
+interface PagedResponse<T> {
+  count: number;
+  page: number;
+  limit: number;
+  results: T[];
+}
+
+const API_BASE =
+  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
+
+const FALLBACK_IMAGE_URL = 'https://placehold.co/240x240/png?text=Exercise';
+const LIMIT = 80;
+
 export default function AddWorkoutScreen() {
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const router = useRouter();
+
+  const [workoutName, setWorkoutName] = useState('');
   const [myWorkout, setMyWorkout] = useState<Exercise[]>([]);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [filterText, setFilterText] = useState('');
-  const [workoutName, setWorkoutName] = useState('');
 
-  const router = useRouter();
-  const API_BASE = 'http://localhost:8080';
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState<number | null>(null);
+  const [loadingInitial, setLoadingInitial] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
+  // Avoid duplicate loads if onEndReached fires multiple times quickly
+  const loadingGuard = useRef(false);
+
+  const canLoadMore = total === null || exercises.length < total;
+
+  const loadPage = async (p: number, q?: string) => {
+    if (loadingGuard.current) return;
+    if (p !== 1 && !canLoadMore) return;
+
+    loadingGuard.current = true;
+    p === 1 ? setLoadingInitial(true) : setLoadingMore(true);
+
+    try {
+      const query = (q ?? '').trim();
+      const url =
+        query.length > 0
+          ? `${API_BASE}/api/workouts/exercises?page=${p}&limit=${LIMIT}&q=${encodeURIComponent(
+              query
+            )}`
+          : `${API_BASE}/api/workouts/exercises?page=${p}&limit=${LIMIT}`;
+
+      const res = await fetch(url);
+      const data: PagedResponse<Exercise> = await res.json();
+
+      if (!data || !Array.isArray(data.results)) {
+        console.error('Unexpected exercises response', data);
+        return;
+      }
+
+      setTotal(data.count);
+      setPage(data.page);
+
+      setExercises((prev) => {
+        const next = p === 1 ? [] : prev;
+        const map = new Map<number, Exercise>(next.map((e) => [e.id, e]));
+        for (const e of data.results) map.set(e.id, e);
+        return Array.from(map.values());
+      });
+    } catch (err) {
+      console.error('Fetch exercises error:', err);
+    } finally {
+      p === 1 ? setLoadingInitial(false) : setLoadingMore(false);
+      loadingGuard.current = false;
+    }
+  };
+
+  // initial load
   useEffect(() => {
-    fetch(`${API_BASE}/api/workouts/exercises`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setExercises(data);
-        else console.error('Unexpected data format', data);
-      })
-      .catch((err) => console.error('Fetch exercises error:', err));
+    loadPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // When searching, reset paging and reload page 1
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setTotal(null);
+      setPage(1);
+      loadPage(1, filterText);
+    }, 250);
+
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterText]);
+
   const addExercise = (exercise: Exercise) => {
-    if (!myWorkout.find((e) => e.id === exercise.id)) {
-      setMyWorkout([...myWorkout, exercise]);
+    if (!myWorkout.some((e) => e.id === exercise.id)) {
+      setMyWorkout((prev) => [...prev, exercise]);
     }
   };
 
   const removeExercise = (id: number) => {
-    setMyWorkout(myWorkout.filter((e) => e.id !== id));
+    setMyWorkout((prev) => prev.filter((e) => e.id !== id));
   };
 
-  const finishWorkout = () => {
-    if (!workoutName) return alert('Please enter a workout name!');
-    if (myWorkout.length === 0) return alert('Add at least one exercise!');
+  const finishWorkout = async () => {
+    const name = workoutName.trim();
+    if (!name) return alert('Enter a workout name');
+    if (myWorkout.length === 0) return alert('Add at least one exercise');
 
-    const payload: WorkoutPayload = { name: workoutName, exercises: myWorkout };
+    const payload: WorkoutPayload = { name, exercises: myWorkout };
 
-    fetch(`${API_BASE}/api/workouts/user`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => res.json())
-      .then(() => {
-        setMyWorkout([]);
-        setWorkoutName('');
-        router.back();
-      })
-      .catch((err) => console.error('Save error:', err));
+    try {
+      const res = await fetch(`${API_BASE}/api/workouts/user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error('Save workout failed:', err);
+        alert('Save failed. Check backend logs.');
+        return;
+      }
+
+      setMyWorkout([]);
+      setWorkoutName('');
+      router.back();
+    } catch (err) {
+      console.error('Save workout error:', err);
+      alert('Save failed. Check connection.');
+    }
   };
 
-  const filteredExercises = exercises.filter(
-    (e) => e.name && e.name.toLowerCase().includes(filterText.toLowerCase())
-  );
+  const filteredExercises = useMemo(() => {
+    // Backend already filters when q is used; keep this as a safe fallback if user types fast
+    const q = filterText.trim().toLowerCase();
+    if (!q) return exercises;
+    return exercises.filter((e) => (e.name ?? '').toLowerCase().includes(q));
+  }, [exercises, filterText]);
 
-  const renderExerciseCard = (item: Exercise, showRemove = false) => (
-    <View style={styles.card}>
-      {item.gifUrl ? (
+  const ExerciseCard = ({
+    item,
+    mode,
+  }: {
+    item: Exercise;
+    mode: 'library' | 'selected';
+  }) => {
+    const isSelected = mode === 'selected';
+
+    return (
+      <View style={styles.card}>
         <Image
-          source={{ uri: item.gifUrl }}
-          style={{ width: 200, height: 200 }}
+          source={{ uri: item.imageUrl ?? FALLBACK_IMAGE_URL }}
+          style={styles.exerciseImage}
           resizeMode="cover"
+          onError={() => {
+            // force fallback for broken urls
+            setExercises((prev) =>
+              prev.map((e) =>
+                e.id === item.id ? { ...e, imageUrl: FALLBACK_IMAGE_URL } : e
+              )
+            );
+            setMyWorkout((prev) =>
+              prev.map((e) =>
+                e.id === item.id ? { ...e, imageUrl: FALLBACK_IMAGE_URL } : e
+              )
+            );
+          }}
         />
-      ) : (
-        <View style={styles.imagePlaceholder}>
-          <Text style={{ color: '#aaa' }}>No Image</Text>
+
+        <View style={styles.cardBody}>
+          <Text numberOfLines={2} style={styles.cardTitle}>
+            {item.name || 'No Name'}
+          </Text>
+          <Text numberOfLines={1} style={styles.cardSub}>
+            {item.category || 'Unknown muscle'}
+          </Text>
+
+          <View style={styles.cardActions}>
+            {isSelected ? (
+              <TouchableOpacity
+                style={[styles.smallBtn, styles.removeBtn]}
+                onPress={() => removeExercise(item.id)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.smallBtnText}>Remove</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.smallBtn, styles.addBtn]}
+                onPress={() => addExercise(item)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.smallBtnText}>Add</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      )}
-
-      <Text style={styles.cardText}>{item.name || 'No Name'}</Text>
-      <Text style={styles.categoryText}>{item.category || 'No Category'}</Text>
-
-      {item.description && (
-        <ScrollView style={styles.descriptionContainer}>
-          <Text style={styles.descriptionText}>{item.description}</Text>
-        </ScrollView>
-      )}
-
-      {showRemove && (
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => removeExercise(item.id)}
-        >
-          <Text style={styles.removeText}>Remove</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Workout Name</Text>
+      <Text style={styles.header}>Create Workout</Text>
+
+      <Text style={styles.label}>Workout name</Text>
       <TextInput
-        style={styles.searchInput}
-        placeholder="Enter workout name..."
-        placeholderTextColor="#aaa"
+        style={styles.input}
+        placeholder="e.g. Push Day"
+        placeholderTextColor={COLORS.MUTED}
         value={workoutName}
         onChangeText={setWorkoutName}
       />
 
-      <Text style={styles.title}>My Exercises</Text>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>My exercises</Text>
+        <Text style={styles.badge}>{myWorkout.length}</Text>
+      </View>
+
       <FlatList
         data={myWorkout}
         keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => renderExerciseCard(item, true)}
+        renderItem={({ item }) => <ExerciseCard item={item} mode="selected" />}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No exercises added yet.</Text>
         }
+        contentContainerStyle={myWorkout.length === 0 ? { flexGrow: 1 } : undefined}
       />
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Text style={styles.finishText}>Add Exercise</Text>
-      </TouchableOpacity>
+      <View style={styles.footerRow}>
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={() => setModalVisible(true)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.secondaryBtnText}>Add exercises</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={finishWorkout}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.primaryBtnText}>Save workout</Text>
+        </TouchableOpacity>
+      </View>
 
       <Modal
-        animationType="slide"
-        transparent={true}
+        transparent
         visible={modalVisible}
+        animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>All Exercises</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Exercise library</Text>
+              <TouchableOpacity
+                style={styles.modalClose}
+                onPress={() => setModalVisible(false)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalCloseText}>×</Text>
+              </TouchableOpacity>
+            </View>
 
             <TextInput
-              style={styles.searchInput}
-              placeholder="Search exercise..."
-              placeholderTextColor="#aaa"
+              style={styles.input}
+              placeholder="Search exercises..."
+              placeholderTextColor={COLORS.MUTED}
               value={filterText}
               onChangeText={setFilterText}
             />
 
-            <FlatList
-              data={filteredExercises}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => addExercise(item)}>
-                  {renderExerciseCard(item)}
-                </TouchableOpacity>
-              )}
-            />
-
-            <TouchableOpacity
-              style={styles.finishButton}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={styles.finishText}>Close</Text>
-            </TouchableOpacity>
+            {loadingInitial ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator />
+                <Text style={styles.loadingText}>Loading exercises…</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredExercises}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => <ExerciseCard item={item} mode="library" />}
+                onEndReached={() => {
+                  if (canLoadMore && !loadingMore) loadPage(page + 1, filterText);
+                }}
+                onEndReachedThreshold={0.6}
+                ListFooterComponent={
+                  loadingMore ? (
+                    <View style={styles.footerLoading}>
+                      <ActivityIndicator />
+                      <Text style={styles.loadingText}>Loading more…</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.footerHint}>
+                      <Text style={styles.footerHintText}>
+                        {total !== null
+                          ? `${filteredExercises.length} / ${total} loaded`
+                          : `${filteredExercises.length} loaded`}
+                      </Text>
+                    </View>
+                  )
+                }
+              />
+            )}
           </View>
         </View>
       </Modal>
-
-      <TouchableOpacity
-        style={[styles.finishButton, { marginTop: 20 }]}
-        onPress={finishWorkout}
-      >
-        <Text style={styles.finishText}>Finish Workout</Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.BACKGROUND, padding: 20 },
-  title: { fontSize: 22, fontWeight: 'bold', color: COLORS.TEXT, marginVertical: 10 },
-  card: { backgroundColor: COLORS.CARD, padding: 15, marginBottom: 12, borderRadius: 12 },
-  cardText: { color: COLORS.TEXT, fontWeight: 'bold', fontSize: 16, marginTop: 6 },
-  categoryText: { color: '#aaa', fontSize: 14, marginTop: 2 },
-  descriptionContainer: { maxHeight: 100, marginTop: 6 },
-  descriptionText: { color: '#ccc', fontSize: 14 },
-  exerciseImage: { width: '100%', height: 160, borderRadius: 10 },
-  imagePlaceholder: { width: '100%', height: 160, borderRadius: 10, backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' },
-  removeButton: { backgroundColor: COLORS.REMOVE_BG, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, marginTop: 10, alignSelf: 'flex-start' },
-  removeText: { color: COLORS.TEXT, fontWeight: 'bold' },
-  finishButton: { backgroundColor: COLORS.BUTTON_BG, padding: 15, borderRadius: 10, alignItems: 'center' },
-  finishText: { color: COLORS.BUTTON_TEXT, fontWeight: 'bold', fontSize: 16 },
-  addButton: { backgroundColor: COLORS.BUTTON_BG, padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 20 },
-  modalBackground: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContainer: { width: '90%', maxHeight: '85%', backgroundColor: COLORS.BACKGROUND, borderRadius: 12, padding: 20 },
-  modalTitle: { color: COLORS.TEXT, fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  searchInput: { backgroundColor: COLORS.CARD, color: COLORS.TEXT, padding: 10, borderRadius: 8, marginBottom: 10 },
-  emptyText: { color: COLORS.TEXT, fontStyle: 'italic', textAlign: 'center' },
+  container: { flex: 1, backgroundColor: COLORS.BG, padding: 18 },
+
+  header: {
+    color: COLORS.TEXT,
+    fontSize: 28,
+    fontWeight: '900',
+    marginTop: 10,
+    marginBottom: 18,
+  },
+
+  label: {
+    color: COLORS.MUTED,
+    fontSize: 13,
+    marginBottom: 8,
+    fontWeight: '700',
+  },
+
+  input: {
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    color: COLORS.TEXT,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+
+  sectionTitle: {
+    color: COLORS.TEXT,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+
+  badge: {
+    color: COLORS.TEXT,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: 'hidden',
+    fontWeight: '900',
+  },
+
+  emptyText: {
+    color: COLORS.MUTED,
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  card: {
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 16,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+
+  exerciseImage: {
+    width: 92,
+    height: 92,
+    backgroundColor: '#0B0B0B',
+  },
+
+  cardBody: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'space-between',
+  },
+
+  cardTitle: {
+    color: COLORS.TEXT,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  cardSub: {
+    color: COLORS.MUTED,
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '800',
+  },
+
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+  },
+
+  smallBtn: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+
+  addBtn: { backgroundColor: COLORS.ACCENT },
+  removeBtn: { backgroundColor: COLORS.DANGER },
+
+  smallBtnText: {
+    color: COLORS.ACCENT_TEXT,
+    fontWeight: '900',
+    fontSize: 12,
+  },
+
+  footerRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 10,
+    paddingBottom: 8,
+  },
+
+  primaryBtn: {
+    flex: 1,
+    backgroundColor: COLORS.ACCENT,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+
+  primaryBtnText: {
+    color: COLORS.ACCENT_TEXT,
+    fontWeight: '900',
+    fontSize: 15,
+  },
+
+  secondaryBtn: {
+    flex: 1,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+
+  secondaryBtnText: {
+    color: COLORS.TEXT,
+    fontWeight: '900',
+    fontSize: 15,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 14,
+  },
+
+  modal: {
+    width: '82%',
+    maxHeight: '80%',
+    backgroundColor: COLORS.BG,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 18,
+    padding: 14,
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+
+  modalTitle: {
+    color: COLORS.TEXT,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+
+  modalClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  modalCloseText: {
+    color: COLORS.TEXT,
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: -2,
+  },
+
+  loadingWrap: {
+    paddingVertical: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+
+  loadingText: {
+    color: COLORS.MUTED,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  footerLoading: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+
+  footerHint: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+
+  footerHintText: {
+    color: COLORS.MUTED,
+    fontSize: 12,
+    fontWeight: '800',
+  },
 });

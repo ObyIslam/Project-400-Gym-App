@@ -1,103 +1,192 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import Entypo from '@expo/vector-icons/Entypo';
 import { useRouter } from 'expo-router';
-
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const COLORS = {
-  BACKGROUND_DARK: '#1E1E1E',
-  CONTENT_CARD: '#333333',
-  TEXT_LIGHT: '#FFFFFF',
-  BUTTON_BG: '#357be6',
-  BUTTON_TEXT: '#FFFFFF',
+  BG: '#121212',
+  CARD: '#1E1E1E',
+  CARD_2: '#242424',
+  BORDER: '#2E2E2E',
+  TEXT: '#FFFFFF',
+  MUTED: '#A9A9A9',
+  ACCENT: '#357be6',
+  ACCENT_TEXT: '#FFFFFF',
 };
 
 export default function HomeScreen() {
-    const router = useRouter();
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
-      <View style={styles.titleBar}>
-        <Text style={styles.titleText}>Workout Page</Text>
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <Text style={styles.topTitle}>Workout</Text>
+        <Text style={styles.topSubtitle}>Start a workout or manage routines</Text>
       </View>
-      {/* Workout Section */}
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.buttonWorkout} onPress={() => router.push('/screens/addworkoutscreen')}>
-          <Text style={styles.buttonText}>Start Empty Workout</Text>
+
+      {/* Primary Card */}
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconCircle}>
+            <Entypo name="plus" size={18} color={COLORS.ACCENT_TEXT} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Start a workout</Text>
+            <Text style={styles.cardSub}>
+              Build a workout from the exercise library.
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={() => router.push('/screens/addworkoutscreen')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.primaryBtnText}>Start Empty Workout</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Routines Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Routines</Text>
-        <TouchableOpacity style={styles.button}>
-          <View style={styles.buttonContent}>
-            <Entypo name="book" size={20} color={COLORS.BUTTON_TEXT} />
-            <Text style={[styles.buttonText, { marginLeft: 10 }]}>New Routine</Text>
+      {/* Routines Card */}
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconCircleAlt}>
+            <Entypo name="book" size={18} color={COLORS.TEXT} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Routines</Text>
+            <Text style={styles.cardSub}>
+              Save templates to reuse later.
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
+          <View style={styles.btnRow}>
+            <Entypo name="book" size={18} color={COLORS.TEXT} />
+            <Text style={styles.secondaryBtnText}>New Routine</Text>
           </View>
         </TouchableOpacity>
+
+        {/* Optional: small note */}
+        <Text style={styles.noteText}>
+          Tip: create routines for Push/Pull/Legs.
+        </Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.BACKGROUND_DARK,
+  container: { flex: 1, backgroundColor: COLORS.BG, padding: 18 },
+
+  topBar: {
+    paddingTop: 14,
+    paddingBottom: 16,
+    marginBottom: 12,
   },
-  
-  titleBar: {
-    height: 60, 
+
+  topTitle: {
+    color: COLORS.TEXT,
+    fontSize: 28,
+    fontWeight: '900',
+  },
+
+  topSubtitle: {
+    marginTop: 4,
+    color: COLORS.MUTED,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  card: {
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
+  },
+
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: COLORS.ACCENT,
+    alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  iconCircleAlt: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
     alignItems: 'center',
-    backgroundColor: COLORS.CONTENT_CARD, 
-    borderBottomWidth: 1,
-    paddingTop: 10, 
+    justifyContent: 'center',
   },
-  titleText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_LIGHT,
-    marginBottom: 10,
-  },
-  section: {
-    marginBottom: 40,
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_LIGHT,
-    marginBottom: 15,
-  },
-  buttonText: {
-    color: COLORS.BUTTON_TEXT,
+
+  cardTitle: {
+    color: COLORS.TEXT,
     fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft:10,
-  },
-  buttonWorkout: {
-    marginTop: 50,
-    backgroundColor: COLORS.BUTTON_BG,
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    width: 220,
+    fontWeight: '900',
   },
 
-  button: {
-    backgroundColor: COLORS.BUTTON_BG,
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    width: 220,
-    
+  cardSub: {
+    marginTop: 4,
+    color: COLORS.MUTED,
+    fontSize: 12,
+    fontWeight: '700',
   },
 
-  buttonContent: {
-    flexDirection: 'row', 
-    textAlign: 'center',
-    justifyContent: 'center',
-},
+  primaryBtn: {
+    backgroundColor: COLORS.ACCENT,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
 
+  primaryBtnText: {
+    color: COLORS.ACCENT_TEXT,
+    fontWeight: '900',
+    fontSize: 15,
+  },
+
+  secondaryBtn: {
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  secondaryBtnText: {
+    color: COLORS.TEXT,
+    fontWeight: '900',
+    fontSize: 15,
+  },
+
+  noteText: {
+    marginTop: 10,
+    color: COLORS.MUTED,
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });
