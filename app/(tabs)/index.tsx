@@ -16,6 +16,7 @@ const COLORS = {
   TEXT: '#FFFFFF',
   MUTED: '#A9A9A9',
   ACCENT: '#357be6',
+  SUCCESS: '#2E8B57',
 };
 
 interface Exercise {
@@ -24,11 +25,24 @@ interface Exercise {
   category?: string | null;
 }
 
+interface WorkoutSet {
+  id?: number;
+  reps?: number | null;
+  weight?: number | null;
+  completed: boolean;
+}
+
+interface WorkoutExercise {
+  id: number;
+  exercise: Exercise;
+  sets: WorkoutSet[];
+}
+
 interface Workout {
   id: number;
   name: string | null;
   finished?: boolean;
-  exercises: Exercise[];
+  exercises: WorkoutExercise[];
 }
 
 const API_BASE =
@@ -60,27 +74,88 @@ export default function HomeScreen() {
 
   const stats = useMemo(() => {
     const totalWorkouts = workouts.length;
-    const totalExercises = workouts.reduce((sum, w) => sum + (w.exercises?.length ?? 0), 0);
-    return { totalWorkouts, totalExercises };
+    const totalExercises = workouts.reduce(
+      (sum, w) => sum + (w.exercises?.length ?? 0),
+      0
+    );
+    const totalSets = workouts.reduce(
+      (sum, w) =>
+        sum +
+        (w.exercises?.reduce((setSum, ex) => setSum + (ex.sets?.length ?? 0), 0) ??
+          0),
+      0
+    );
+
+    return { totalWorkouts, totalExercises, totalSets };
   }, [workouts]);
 
-  const renderExercise = ({ item }: { item: Exercise }) => (
-    <View style={styles.exerciseRow}>
-      <View style={styles.bullet} />
-      <Text numberOfLines={1} style={styles.exerciseText}>
-        {item.name || 'Unnamed exercise'}
+  const renderSet = ({ item }: { item: WorkoutSet }) => (
+    <View style={styles.setRow}>
+      <View
+        style={[
+          styles.checkCircle,
+          item.completed && styles.checkCircleCompleted,
+        ]}
+      >
+        {item.completed ? <Text style={styles.checkText}>✓</Text> : null}
+      </View>
+
+      <Text style={styles.setText}>
+        {item.reps ?? 0} reps
       </Text>
-      {!!item.category && (
-        <View style={styles.pill}>
-          <Text style={styles.pillText}>{item.category}</Text>
-        </View>
-      )}
+
+      <Text style={styles.setText}>
+        {item.weight ?? 0} kg
+      </Text>
     </View>
   );
 
+  const renderExercise = ({ item }: { item: WorkoutExercise }) => {
+    const setCount = item.sets?.length ?? 0;
+    const completedCount = item.sets?.filter((set) => set.completed).length ?? 0;
+
+    return (
+      <View style={styles.exerciseBlock}>
+        <View style={styles.exerciseHeader}>
+          <View style={styles.exerciseTitleWrap}>
+            <View style={styles.bullet} />
+            <Text numberOfLines={1} style={styles.exerciseText}>
+              {item.exercise?.name || 'Unnamed exercise'}
+            </Text>
+          </View>
+
+          {!!item.exercise?.category && (
+            <View style={styles.pill}>
+              <Text style={styles.pillText}>{item.exercise.category}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.exerciseMetaRow}>
+          <Text style={styles.exerciseMeta}>
+            {setCount} {setCount === 1 ? 'set' : 'sets'}
+          </Text>
+          <Text style={styles.exerciseMeta}>
+            {completedCount}/{setCount} done
+          </Text>
+        </View>
+
+        <FlatList
+          data={item.sets ?? []}
+          keyExtractor={(_, index) => `${item.id}-set-${index}`}
+          renderItem={renderSet}
+          scrollEnabled={false}
+          contentContainerStyle={{ paddingTop: 6 }}
+        />
+      </View>
+    );
+  };
+
   const renderWorkout = ({ item, index }: { item: Workout; index: number }) => {
     const title = item.name?.trim() ? item.name : `Workout ${index + 1}`;
-    const count = item.exercises?.length ?? 0;
+    const exerciseCount = item.exercises?.length ?? 0;
+    const totalSetCount =
+      item.exercises?.reduce((sum, ex) => sum + (ex.sets?.length ?? 0), 0) ?? 0;
 
     return (
       <View style={styles.workoutCard}>
@@ -90,16 +165,22 @@ export default function HomeScreen() {
               {title}
             </Text>
             <Text style={styles.workoutMeta}>
-              {count} {count === 1 ? 'exercise' : 'exercises'}
+              {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'} •{' '}
+              {totalSetCount} {totalSetCount === 1 ? 'set' : 'sets'}
+              {typeof item.finished === 'boolean'
+                ? item.finished
+                  ? ' • Finished'
+                  : ' • In progress'
+                : ''}
             </Text>
           </View>
 
           <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{count}</Text>
+            <Text style={styles.countBadgeText}>{exerciseCount}</Text>
           </View>
         </View>
 
-        {count === 0 ? (
+        {exerciseCount === 0 ? (
           <Text style={styles.emptyExercisesText}>No exercises saved.</Text>
         ) : (
           <FlatList
@@ -118,6 +199,10 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.topBar}>
         <Text style={styles.topTitle}>Home</Text>
+        <Text style={styles.topSubtitle}>
+          {stats.totalWorkouts} workouts • {stats.totalExercises} exercises •{' '}
+          {stats.totalSets} sets
+        </Text>
       </View>
 
       <FlatList
@@ -222,12 +307,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  exerciseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
+  exerciseBlock: {
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER,
+    paddingTop: 10,
+    marginTop: 10,
+  },
+
+  exerciseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+
+  exerciseTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
     gap: 10,
   },
 
@@ -241,8 +338,8 @@ const styles = StyleSheet.create({
   exerciseText: {
     flex: 1,
     color: COLORS.TEXT,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
   },
 
   pill: {
@@ -258,6 +355,61 @@ const styles = StyleSheet.create({
     color: COLORS.MUTED,
     fontSize: 11,
     fontWeight: '800',
+  },
+
+  exerciseMetaRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
+    marginLeft: 16,
+  },
+
+  exerciseMeta: {
+    color: COLORS.MUTED,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  setRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginLeft: 16,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 12,
+  },
+
+  checkCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.CARD,
+  },
+
+  checkCircleCompleted: {
+    backgroundColor: COLORS.SUCCESS,
+    borderColor: COLORS.SUCCESS,
+  },
+
+  checkText: {
+    color: COLORS.TEXT,
+    fontWeight: '900',
+    fontSize: 12,
+  },
+
+  setText: {
+    color: COLORS.TEXT,
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   emptyExercisesText: {

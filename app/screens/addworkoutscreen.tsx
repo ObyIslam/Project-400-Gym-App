@@ -1,5 +1,5 @@
 import { Stack, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -23,6 +23,7 @@ const COLORS = {
   ACCENT: '#357be6',
   ACCENT_TEXT: '#FFFFFF',
   DANGER: '#E74C3C',
+  SUCCESS: '#2E8B57',
 };
 
 export const layout = () => <Stack screenOptions={{ headerShown: false }} />;
@@ -35,9 +36,27 @@ interface Exercise {
   imageUrl?: string | null;
 }
 
+interface WorkoutSet {
+  reps: string;
+  weight: string;
+  completed: boolean;
+}
+
+interface WorkoutExercise {
+  exercise: Exercise;
+  sets: WorkoutSet[];
+}
+
 interface WorkoutPayload {
   name: string;
-  exercises: Exercise[];
+  exercises: {
+    exercise: Exercise;
+    sets: {
+      reps: number;
+      weight: number;
+      completed: boolean;
+    }[];
+  }[];
 }
 
 interface PagedResponse<T> {
@@ -53,11 +72,160 @@ const API_BASE =
 const FALLBACK_IMAGE_URL = 'https://placehold.co/240x240/png?text=Exercise';
 const LIMIT = 80;
 
+type ExerciseLibraryCardProps = {
+  item: Exercise;
+  onAddExercise: (exercise: Exercise) => void;
+  onImageError: (exerciseId: number) => void;
+};
+
+const ExerciseLibraryCard = memo(function ExerciseLibraryCard({
+  item,
+  onAddExercise,
+  onImageError,
+}: ExerciseLibraryCardProps) {
+  return (
+    <View style={styles.card}>
+      <Image
+        source={{ uri: item.imageUrl ?? FALLBACK_IMAGE_URL }}
+        style={styles.exerciseImage}
+        resizeMode="cover"
+        onError={() => onImageError(item.id)}
+      />
+
+      <View style={styles.cardBody}>
+        <Text numberOfLines={2} style={styles.cardTitle}>
+          {item.name || 'No Name'}
+        </Text>
+        <Text numberOfLines={1} style={styles.cardSub}>
+          {item.category || 'Unknown muscle'}
+        </Text>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={[styles.smallBtn, styles.addBtn]}
+            onPress={() => onAddExercise(item)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.smallBtnText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+});
+
+type SelectedExerciseCardProps = {
+  item: WorkoutExercise;
+  onImageError: (exerciseId: number) => void;
+  onUpdateSetReps: (exerciseId: number, setIndex: number, reps: string) => void;
+  onUpdateSetWeight: (
+    exerciseId: number,
+    setIndex: number,
+    weight: string
+  ) => void;
+  onToggleSetCompleted: (exerciseId: number, setIndex: number) => void;
+  onAddSet: (exerciseId: number) => void;
+  onRemoveExercise: (exerciseId: number) => void;
+};
+
+const SelectedExerciseCard = memo(function SelectedExerciseCard({
+  item,
+  onImageError,
+  onUpdateSetReps,
+  onUpdateSetWeight,
+  onToggleSetCompleted,
+  onAddSet,
+  onRemoveExercise,
+}: SelectedExerciseCardProps) {
+  return (
+    <View style={styles.card}>
+      <Image
+        source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
+        style={styles.exerciseImage}
+        resizeMode="cover"
+        onError={() => onImageError(item.exercise.id)}
+      />
+
+      <View style={styles.cardBody}>
+        <Text numberOfLines={2} style={styles.cardTitle}>
+          {item.exercise.name || 'No Name'}
+        </Text>
+        <Text numberOfLines={1} style={styles.cardSub}>
+          {item.exercise.category || 'Unknown muscle'}
+        </Text>
+
+        {item.sets.map((set, setIndex) => (
+          <View key={setIndex} style={styles.setRow}>
+            <View style={styles.setNumberBox}>
+              <Text style={styles.setNumberText}>{setIndex + 1}</Text>
+            </View>
+
+            <TextInput
+              style={styles.smallInput}
+              placeholder="Reps"
+              placeholderTextColor={COLORS.MUTED}
+              keyboardType="numeric"
+              value={set.reps}
+              onChangeText={(text) =>
+                onUpdateSetReps(item.exercise.id, setIndex, text)
+              }
+            />
+
+            <TextInput
+              style={styles.smallInput}
+              placeholder="KG"
+              placeholderTextColor={COLORS.MUTED}
+              keyboardType="numeric"
+              value={set.weight}
+              onChangeText={(text) =>
+                onUpdateSetWeight(item.exercise.id, setIndex, text)
+              }
+            />
+
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => onToggleSetCompleted(item.exercise.id, setIndex)}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  set.completed && styles.checkboxChecked,
+                ]}
+              >
+                {set.completed ? <Text style={styles.checkboxTick}>✓</Text> : null}
+              </View>
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        <TouchableOpacity
+          style={styles.addSetBtn}
+          onPress={() => onAddSet(item.exercise.id)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.addSetBtnText}>+ Add Set</Text>
+        </TouchableOpacity>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={[styles.smallBtn, styles.removeBtn]}
+            onPress={() => onRemoveExercise(item.exercise.id)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.smallBtnText}>Remove</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+});
+
 export default function AddWorkoutScreen() {
   const router = useRouter();
 
   const [workoutName, setWorkoutName] = useState('');
-  const [myWorkout, setMyWorkout] = useState<Exercise[]>([]);
+  const [myWorkout, setMyWorkout] = useState<WorkoutExercise[]>([]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [filterText, setFilterText] = useState('');
@@ -68,7 +236,6 @@ export default function AddWorkoutScreen() {
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Avoid duplicate loads if onEndReached fires multiple times quickly
   const loadingGuard = useRef(false);
 
   const canLoadMore = total === null || exercises.length < total;
@@ -93,7 +260,7 @@ export default function AddWorkoutScreen() {
       const data: PagedResponse<Exercise> = await res.json();
 
       if (!data || !Array.isArray(data.results)) {
-        console.error('Unexpected exercises response', data);
+        console.error('Unexpected paged exercises response', data);
         return;
       }
 
@@ -114,13 +281,10 @@ export default function AddWorkoutScreen() {
     }
   };
 
-  // initial load
   useEffect(() => {
     loadPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When searching, reset paging and reload page 1
   useEffect(() => {
     const t = setTimeout(() => {
       setTotal(null);
@@ -129,17 +293,94 @@ export default function AddWorkoutScreen() {
     }, 250);
 
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterText]);
 
   const addExercise = (exercise: Exercise) => {
-    if (!myWorkout.some((e) => e.id === exercise.id)) {
-      setMyWorkout((prev) => [...prev, exercise]);
+    const exists = myWorkout.some((e) => e.exercise.id === exercise.id);
+    if (!exists) {
+      setMyWorkout((prev) => [
+        ...prev,
+        {
+          exercise,
+          sets: [{ reps: '', weight: '', completed: false }],
+        },
+      ]);
     }
   };
 
-  const removeExercise = (id: number) => {
-    setMyWorkout((prev) => prev.filter((e) => e.id !== id));
+  const removeExercise = (exerciseId: number) => {
+    setMyWorkout((prev) => prev.filter((e) => e.exercise.id !== exerciseId));
+  };
+
+  const addSet = (exerciseId: number) => {
+    setMyWorkout((prev) =>
+      prev.map((item) =>
+        item.exercise.id === exerciseId
+          ? {
+              ...item,
+              sets: [
+                ...item.sets,
+                { reps: '', weight: '', completed: false },
+              ],
+            }
+          : item
+      )
+    );
+  };
+
+  const updateSetReps = (
+    exerciseId: number,
+    setIndex: number,
+    reps: string
+  ) => {
+    setMyWorkout((prev) =>
+      prev.map((item) =>
+        item.exercise.id === exerciseId
+          ? {
+              ...item,
+              sets: item.sets.map((set, index) =>
+                index === setIndex ? { ...set, reps } : set
+              ),
+            }
+          : item
+      )
+    );
+  };
+
+  const updateSetWeight = (
+    exerciseId: number,
+    setIndex: number,
+    weight: string
+  ) => {
+    setMyWorkout((prev) =>
+      prev.map((item) =>
+        item.exercise.id === exerciseId
+          ? {
+              ...item,
+              sets: item.sets.map((set, index) =>
+                index === setIndex ? { ...set, weight } : set
+              ),
+            }
+          : item
+      )
+    );
+  };
+
+  const toggleSetCompleted = (exerciseId: number, setIndex: number) => {
+    setMyWorkout((prev) =>
+      prev.map((item) =>
+        item.exercise.id === exerciseId
+          ? {
+              ...item,
+              sets: item.sets.map((set, index) =>
+                index === setIndex
+                  ? { ...set, completed: !set.completed }
+                  : set
+              ),
+            }
+          : item
+      )
+    );
   };
 
   const finishWorkout = async () => {
@@ -147,7 +388,17 @@ export default function AddWorkoutScreen() {
     if (!name) return alert('Enter a workout name');
     if (myWorkout.length === 0) return alert('Add at least one exercise');
 
-    const payload: WorkoutPayload = { name, exercises: myWorkout };
+    const payload: WorkoutPayload = {
+      name,
+      exercises: myWorkout.map((item) => ({
+        exercise: item.exercise,
+        sets: item.sets.map((set) => ({
+          reps: Number(set.reps) || 0,
+          weight: Number(set.weight) || 0,
+          completed: set.completed,
+        })),
+      })),
+    };
 
     try {
       const res = await fetch(`${API_BASE}/api/workouts/user`, {
@@ -159,7 +410,7 @@ export default function AddWorkoutScreen() {
       if (!res.ok) {
         const err = await res.text();
         console.error('Save workout failed:', err);
-        alert('Save failed. Check backend logs.');
+        alert('Save failed. Your backend still needs to support sets.');
         return;
       }
 
@@ -173,71 +424,32 @@ export default function AddWorkoutScreen() {
   };
 
   const filteredExercises = useMemo(() => {
-    // Backend already filters when q is used; keep this as a safe fallback if user types fast
     const q = filterText.trim().toLowerCase();
     if (!q) return exercises;
     return exercises.filter((e) => (e.name ?? '').toLowerCase().includes(q));
   }, [exercises, filterText]);
 
-  const ExerciseCard = ({
-    item,
-    mode,
-  }: {
-    item: Exercise;
-    mode: 'library' | 'selected';
-  }) => {
-    const isSelected = mode === 'selected';
+  const handleLibraryImageError = (exerciseId: number) => {
+    setExercises((prev) =>
+      prev.map((e) =>
+        e.id === exerciseId ? { ...e, imageUrl: FALLBACK_IMAGE_URL } : e
+      )
+    );
+  };
 
-    return (
-      <View style={styles.card}>
-        <Image
-          source={{ uri: item.imageUrl ?? FALLBACK_IMAGE_URL }}
-          style={styles.exerciseImage}
-          resizeMode="cover"
-          onError={() => {
-            // force fallback for broken urls
-            setExercises((prev) =>
-              prev.map((e) =>
-                e.id === item.id ? { ...e, imageUrl: FALLBACK_IMAGE_URL } : e
-              )
-            );
-            setMyWorkout((prev) =>
-              prev.map((e) =>
-                e.id === item.id ? { ...e, imageUrl: FALLBACK_IMAGE_URL } : e
-              )
-            );
-          }}
-        />
-
-        <View style={styles.cardBody}>
-          <Text numberOfLines={2} style={styles.cardTitle}>
-            {item.name || 'No Name'}
-          </Text>
-          <Text numberOfLines={1} style={styles.cardSub}>
-            {item.category || 'Unknown muscle'}
-          </Text>
-
-          <View style={styles.cardActions}>
-            {isSelected ? (
-              <TouchableOpacity
-                style={[styles.smallBtn, styles.removeBtn]}
-                onPress={() => removeExercise(item.id)}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.smallBtnText}>Remove</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.smallBtn, styles.addBtn]}
-                onPress={() => addExercise(item)}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.smallBtnText}>Add</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
+  const handleSelectedImageError = (exerciseId: number) => {
+    setMyWorkout((prev) =>
+      prev.map((e) =>
+        e.exercise.id === exerciseId
+          ? {
+              ...e,
+              exercise: {
+                ...e.exercise,
+                imageUrl: FALLBACK_IMAGE_URL,
+              },
+            }
+          : e
+      )
     );
   };
 
@@ -261,12 +473,24 @@ export default function AddWorkoutScreen() {
 
       <FlatList
         data={myWorkout}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => <ExerciseCard item={item} mode="selected" />}
+        keyExtractor={(item) => item.exercise.id.toString()}
+        renderItem={({ item }) => (
+          <SelectedExerciseCard
+            item={item}
+            onImageError={handleSelectedImageError}
+            onUpdateSetReps={updateSetReps}
+            onUpdateSetWeight={updateSetWeight}
+            onToggleSetCompleted={toggleSetCompleted}
+            onAddSet={addSet}
+            onRemoveExercise={removeExercise}
+          />
+        )}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No exercises added yet.</Text>
         }
-        contentContainerStyle={myWorkout.length === 0 ? { flexGrow: 1 } : undefined}
+        contentContainerStyle={
+          myWorkout.length === 0 ? { flexGrow: 1 } : undefined
+        }
       />
 
       <View style={styles.footerRow}>
@@ -323,7 +547,13 @@ export default function AddWorkoutScreen() {
               <FlatList
                 data={filteredExercises}
                 keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => <ExerciseCard item={item} mode="library" />}
+                renderItem={({ item }) => (
+                  <ExerciseLibraryCard
+                    item={item}
+                    onAddExercise={addExercise}
+                    onImageError={handleLibraryImageError}
+                  />
+                )}
                 onEndReached={() => {
                   if (canLoadMore && !loadingMore) loadPage(page + 1, filterText);
                 }}
@@ -436,7 +666,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    justifyContent: 'space-between',
   },
 
   cardTitle: {
@@ -450,12 +679,96 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     fontWeight: '800',
+    marginBottom: 10,
+  },
+
+  setRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  setNumberBox: {
+    width: 28,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  setNumberText: {
+    color: COLORS.TEXT,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  smallInput: {
+    width: 70,
+    height: 36,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 8,
+    color: COLORS.TEXT,
+    fontSize: 14,
+    textAlign: 'center',
+    padding: 4,
+  },
+
+  checkboxContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 2,
+  },
+
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.CARD_2,
+  },
+
+  checkboxChecked: {
+    backgroundColor: COLORS.SUCCESS,
+    borderColor: COLORS.SUCCESS,
+  },
+
+  checkboxTick: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 14,
+  },
+
+  addSetBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    marginBottom: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 10,
+  },
+
+  addSetBtnText: {
+    color: COLORS.TEXT,
+    fontSize: 12,
+    fontWeight: '800',
   },
 
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 10,
+    marginTop: 4,
   },
 
   smallBtn: {
