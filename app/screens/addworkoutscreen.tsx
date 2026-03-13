@@ -30,6 +30,7 @@ export const layout = () => <Stack screenOptions={{ headerShown: false }} />;
 
 interface Exercise {
   id: number;
+  externalId?: string | null;
   name: string;
   category: string;
   description?: string | null;

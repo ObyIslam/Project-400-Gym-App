@@ -56,6 +56,7 @@ export default function HomeScreen() {
     return fetch(`${API_BASE}/api/workouts/user`)
       .then((res) => res.json())
       .then((data: Workout[]) => {
+        console.log('HOME SCREEN UPDATED VERSION RUNNING', data);
         if (Array.isArray(data)) setWorkouts(data);
         else console.error('Unexpected workouts response', data);
       })
@@ -100,13 +101,8 @@ export default function HomeScreen() {
         {item.completed ? <Text style={styles.checkText}>✓</Text> : null}
       </View>
 
-      <Text style={styles.setText}>
-        {item.reps ?? 0} reps
-      </Text>
-
-      <Text style={styles.setText}>
-        {item.weight ?? 0} kg
-      </Text>
+      <Text style={styles.setText}>{item.reps ?? 0} reps</Text>
+      <Text style={styles.setText}>{item.weight ?? 0} kg</Text>
     </View>
   );
 
@@ -167,11 +163,6 @@ export default function HomeScreen() {
             <Text style={styles.workoutMeta}>
               {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'} •{' '}
               {totalSetCount} {totalSetCount === 1 ? 'set' : 'sets'}
-              {typeof item.finished === 'boolean'
-                ? item.finished
-                  ? ' • Finished'
-                  : ' • In progress'
-                : ''}
             </Text>
           </View>
 
@@ -200,8 +191,7 @@ export default function HomeScreen() {
       <View style={styles.topBar}>
         <Text style={styles.topTitle}>Home</Text>
         <Text style={styles.topSubtitle}>
-          {stats.totalWorkouts} workouts • {stats.totalExercises} exercises •{' '}
-          {stats.totalSets} sets
+          {stats.totalWorkouts} workouts • {stats.totalExercises} exercises • {stats.totalSets} sets
         </Text>
       </View>
 
