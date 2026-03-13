@@ -1,16 +1,16 @@
 import { Stack, useRouter } from 'expo-router';
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const COLORS = {
@@ -23,7 +23,6 @@ const COLORS = {
   ACCENT: '#357be6',
   ACCENT_TEXT: '#FFFFFF',
   DANGER: '#E74C3C',
-  SUCCESS: '#2E8B57',
 };
 
 export const layout = () => <Stack screenOptions={{ headerShown: false }} />;
@@ -37,25 +36,23 @@ interface Exercise {
   imageUrl?: string | null;
 }
 
-interface WorkoutSet {
+interface RoutineSet {
   reps: string;
   weight: string;
-  completed: boolean;
 }
 
-interface WorkoutExercise {
+interface RoutineExercise {
   exercise: Exercise;
-  sets: WorkoutSet[];
+  sets: RoutineSet[];
 }
 
-interface WorkoutPayload {
+interface RoutinePayload {
   name: string;
   exercises: {
     exercise: Exercise;
     sets: {
       reps: number;
       weight: number;
-      completed: boolean;
     }[];
   }[];
 }
@@ -115,8 +112,8 @@ const ExerciseLibraryCard = memo(function ExerciseLibraryCard({
   );
 });
 
-type SelectedExerciseCardProps = {
-  item: WorkoutExercise;
+type SelectedRoutineExerciseCardProps = {
+  item: RoutineExercise;
   onImageError: (exerciseId: number) => void;
   onUpdateSetReps: (exerciseId: number, setIndex: number, reps: string) => void;
   onUpdateSetWeight: (
@@ -124,22 +121,20 @@ type SelectedExerciseCardProps = {
     setIndex: number,
     weight: string
   ) => void;
-  onToggleSetCompleted: (exerciseId: number, setIndex: number) => void;
   onAddSet: (exerciseId: number) => void;
   onRemoveSet: (exerciseId: number, setIndex: number) => void;
   onRemoveExercise: (exerciseId: number) => void;
 };
 
-const SelectedExerciseCard = memo(function SelectedExerciseCard({
+const SelectedRoutineExerciseCard = memo(function SelectedRoutineExerciseCard({
   item,
   onImageError,
   onUpdateSetReps,
   onUpdateSetWeight,
-  onToggleSetCompleted,
   onAddSet,
   onRemoveSet,
   onRemoveExercise,
-}: SelectedExerciseCardProps) {
+}: SelectedRoutineExerciseCardProps) {
   return (
     <View style={styles.card}>
       <Image
@@ -186,21 +181,6 @@ const SelectedExerciseCard = memo(function SelectedExerciseCard({
             />
 
             <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() => onToggleSetCompleted(item.exercise.id, setIndex)}
-              activeOpacity={0.8}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  set.completed && styles.checkboxChecked,
-                ]}
-              >
-                {set.completed ? <Text style={styles.checkboxTick}>✓</Text> : null}
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={styles.removeSetBtn}
               onPress={() => onRemoveSet(item.exercise.id, setIndex)}
               activeOpacity={0.85}
@@ -210,15 +190,15 @@ const SelectedExerciseCard = memo(function SelectedExerciseCard({
           </View>
         ))}
 
-        <TouchableOpacity
-          style={styles.addSetBtn}
-          onPress={() => onAddSet(item.exercise.id)}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.addSetBtnText}>+ Add Set</Text>
-        </TouchableOpacity>
+        <View style={styles.cardActionsBetween}>
+          <TouchableOpacity
+            style={styles.addSetBtn}
+            onPress={() => onAddSet(item.exercise.id)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.addSetBtnText}>+ Add Set</Text>
+          </TouchableOpacity>
 
-        <View style={styles.cardActions}>
           <TouchableOpacity
             style={[styles.smallBtn, styles.removeBtn]}
             onPress={() => onRemoveExercise(item.exercise.id)}
@@ -232,11 +212,11 @@ const SelectedExerciseCard = memo(function SelectedExerciseCard({
   );
 });
 
-export default function AddWorkoutScreen() {
+export default function AddRoutineScreen() {
   const router = useRouter();
 
-  const [workoutName, setWorkoutName] = useState('');
-  const [myWorkout, setMyWorkout] = useState<WorkoutExercise[]>([]);
+  const [routineName, setRoutineName] = useState('');
+  const [myRoutine, setMyRoutine] = useState<RoutineExercise[]>([]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [filterText, setFilterText] = useState('');
@@ -307,32 +287,29 @@ export default function AddWorkoutScreen() {
   }, [filterText]);
 
   const addExercise = (exercise: Exercise) => {
-    const exists = myWorkout.some((e) => e.exercise.id === exercise.id);
+    const exists = myRoutine.some((e) => e.exercise.id === exercise.id);
     if (!exists) {
-      setMyWorkout((prev) => [
+      setMyRoutine((prev) => [
         ...prev,
         {
           exercise,
-          sets: [{ reps: '', weight: '', completed: false }],
+          sets: [{ reps: '', weight: '' }],
         },
       ]);
     }
   };
 
   const removeExercise = (exerciseId: number) => {
-    setMyWorkout((prev) => prev.filter((e) => e.exercise.id !== exerciseId));
+    setMyRoutine((prev) => prev.filter((e) => e.exercise.id !== exerciseId));
   };
 
   const addSet = (exerciseId: number) => {
-    setMyWorkout((prev) =>
+    setMyRoutine((prev) =>
       prev.map((item) =>
         item.exercise.id === exerciseId
           ? {
               ...item,
-              sets: [
-                ...item.sets,
-                { reps: '', weight: '', completed: false },
-              ],
+              sets: [...item.sets, { reps: '', weight: '' }],
             }
           : item
       )
@@ -340,18 +317,14 @@ export default function AddWorkoutScreen() {
   };
 
   const removeSet = (exerciseId: number, setIndex: number) => {
-    setMyWorkout((prev) =>
+    setMyRoutine((prev) =>
       prev.map((item) => {
         if (item.exercise.id !== exerciseId) return item;
 
         const updatedSets = item.sets.filter((_, index) => index !== setIndex);
-
         return {
           ...item,
-          sets:
-            updatedSets.length > 0
-              ? updatedSets
-              : [{ reps: '', weight: '', completed: false }],
+          sets: updatedSets.length > 0 ? updatedSets : [{ reps: '', weight: '' }],
         };
       })
     );
@@ -362,7 +335,7 @@ export default function AddWorkoutScreen() {
     setIndex: number,
     reps: string
   ) => {
-    setMyWorkout((prev) =>
+    setMyRoutine((prev) =>
       prev.map((item) =>
         item.exercise.id === exerciseId
           ? {
@@ -381,7 +354,7 @@ export default function AddWorkoutScreen() {
     setIndex: number,
     weight: string
   ) => {
-    setMyWorkout((prev) =>
+    setMyRoutine((prev) =>
       prev.map((item) =>
         item.exercise.id === exerciseId
           ? {
@@ -395,42 +368,24 @@ export default function AddWorkoutScreen() {
     );
   };
 
-  const toggleSetCompleted = (exerciseId: number, setIndex: number) => {
-    setMyWorkout((prev) =>
-      prev.map((item) =>
-        item.exercise.id === exerciseId
-          ? {
-              ...item,
-              sets: item.sets.map((set, index) =>
-                index === setIndex
-                  ? { ...set, completed: !set.completed }
-                  : set
-              ),
-            }
-          : item
-      )
-    );
-  };
+  const saveRoutine = async () => {
+    const name = routineName.trim();
+    if (!name) return alert('Enter a routine name');
+    if (myRoutine.length === 0) return alert('Add at least one exercise');
 
-  const finishWorkout = async () => {
-    const name = workoutName.trim();
-    if (!name) return alert('Enter a workout name');
-    if (myWorkout.length === 0) return alert('Add at least one exercise');
-
-    const payload: WorkoutPayload = {
+    const payload: RoutinePayload = {
       name,
-      exercises: myWorkout.map((item) => ({
+      exercises: myRoutine.map((item) => ({
         exercise: item.exercise,
         sets: item.sets.map((set) => ({
           reps: Number(set.reps) || 0,
           weight: Number(set.weight) || 0,
-          completed: set.completed,
         })),
       })),
     };
 
     try {
-      const res = await fetch(`${API_BASE}/api/workouts/user`, {
+      const res = await fetch(`${API_BASE}/api/routines`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -438,17 +393,17 @@ export default function AddWorkoutScreen() {
 
       if (!res.ok) {
         const err = await res.text();
-        console.error('Save workout failed:', err);
-        alert('Save failed. Check backend logs.');
+        console.error('Save routine failed:', err);
+        alert('Save failed. Backend routine endpoint still needed.');
         return;
       }
 
-      setMyWorkout([]);
-      setWorkoutName('');
+      setMyRoutine([]);
+      setRoutineName('');
       router.back();
     } catch (err) {
-      console.error('Save workout error:', err);
-      alert('Save failed. Check connection.');
+      console.error('Save routine error:', err);
+      alert('Save failed. Check backend connection.');
     }
   };
 
@@ -467,7 +422,7 @@ export default function AddWorkoutScreen() {
   };
 
   const handleSelectedImageError = (exerciseId: number) => {
-    setMyWorkout((prev) =>
+    setMyRoutine((prev) =>
       prev.map((e) =>
         e.exercise.id === exerciseId
           ? {
@@ -484,32 +439,31 @@ export default function AddWorkoutScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Create Workout</Text>
+      <Text style={styles.header}>Create Routine</Text>
 
-      <Text style={styles.label}>Workout name</Text>
+      <Text style={styles.label}>Routine name</Text>
       <TextInput
         style={styles.input}
-        placeholder="e.g. Push Day"
+        placeholder="e.g. Push Day Routine"
         placeholderTextColor={COLORS.MUTED}
-        value={workoutName}
-        onChangeText={setWorkoutName}
+        value={routineName}
+        onChangeText={setRoutineName}
       />
 
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>My exercises</Text>
-        <Text style={styles.badge}>{myWorkout.length}</Text>
+        <Text style={styles.sectionTitle}>Routine exercises</Text>
+        <Text style={styles.badge}>{myRoutine.length}</Text>
       </View>
 
       <FlatList
-        data={myWorkout}
+        data={myRoutine}
         keyExtractor={(item) => item.exercise.id.toString()}
         renderItem={({ item }) => (
-          <SelectedExerciseCard
+          <SelectedRoutineExerciseCard
             item={item}
             onImageError={handleSelectedImageError}
             onUpdateSetReps={updateSetReps}
             onUpdateSetWeight={updateSetWeight}
-            onToggleSetCompleted={toggleSetCompleted}
             onAddSet={addSet}
             onRemoveSet={removeSet}
             onRemoveExercise={removeExercise}
@@ -519,7 +473,7 @@ export default function AddWorkoutScreen() {
           <Text style={styles.emptyText}>No exercises added yet.</Text>
         }
         contentContainerStyle={
-          myWorkout.length === 0 ? { flexGrow: 1 } : undefined
+          myRoutine.length === 0 ? { flexGrow: 1 } : undefined
         }
       />
 
@@ -534,10 +488,10 @@ export default function AddWorkoutScreen() {
 
         <TouchableOpacity
           style={styles.primaryBtn}
-          onPress={finishWorkout}
+          onPress={saveRoutine}
           activeOpacity={0.85}
         >
-          <Text style={styles.primaryBtnText}>Save workout</Text>
+          <Text style={styles.primaryBtnText}>Save routine</Text>
         </TouchableOpacity>
       </View>
 
@@ -749,34 +703,6 @@ const styles = StyleSheet.create({
     padding: 4,
   },
 
-  checkboxContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 2,
-  },
-
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: COLORS.BORDER,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.CARD_2,
-  },
-
-  checkboxChecked: {
-    backgroundColor: COLORS.SUCCESS,
-    borderColor: COLORS.SUCCESS,
-  },
-
-  checkboxTick: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 14,
-  },
-
   removeSetBtn: {
     width: 26,
     height: 26,
@@ -798,7 +724,6 @@ const styles = StyleSheet.create({
   addSetBtn: {
     alignSelf: 'flex-start',
     marginTop: 4,
-    marginBottom: 10,
     paddingVertical: 6,
     paddingHorizontal: 10,
     backgroundColor: COLORS.CARD_2,
@@ -816,6 +741,13 @@ const styles = StyleSheet.create({
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    marginTop: 4,
+  },
+
+  cardActionsBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 4,
   },
 

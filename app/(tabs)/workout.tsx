@@ -62,7 +62,11 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          activeOpacity={0.85}
+          onPress={() => router.push('/screens/addroutinescreen')}
+        >
           <View style={styles.btnRow}>
             <Entypo name="book" size={18} color={COLORS.TEXT} />
             <Text style={styles.secondaryBtnText}>New Routine</Text>
