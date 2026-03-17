@@ -5,6 +5,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -16,7 +17,7 @@ const COLORS = {
   TEXT: '#FFFFFF',
   MUTED: '#A9A9A9',
   ACCENT: '#357be6',
-  SUCCESS: '#2E8B57',
+  DANGER: '#E74C3C',
 };
 
 interface Exercise {
@@ -56,7 +57,6 @@ export default function HomeScreen() {
     return fetch(`${API_BASE}/api/workouts/user`)
       .then((res) => res.json())
       .then((data: Workout[]) => {
-        console.log('HOME SCREEN UPDATED VERSION RUNNING', data);
         if (Array.isArray(data)) setWorkouts(data);
         else console.error('Unexpected workouts response', data);
       })
@@ -71,6 +71,24 @@ export default function HomeScreen() {
     setRefreshing(true);
     await loadWorkouts();
     setRefreshing(false);
+  };
+
+  const deleteWorkout = async (id: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/workouts/user/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error('Delete workout failed:', err);
+        return;
+      }
+
+      setWorkouts((prev) => prev.filter((w) => w.id !== id));
+    } catch (err) {
+      console.error('Delete workout error:', err);
+    }
   };
 
   const stats = useMemo(() => {
@@ -91,30 +109,20 @@ export default function HomeScreen() {
   }, [workouts]);
 
   const renderSet = ({ item }: { item: WorkoutSet }) => (
-    <View style={styles.setRow}>
-      <View
-        style={[
-          styles.checkCircle,
-          item.completed && styles.checkCircleCompleted,
-        ]}
-      >
-        {item.completed ? <Text style={styles.checkText}>✓</Text> : null}
-      </View>
-
-      <Text style={styles.setText}>{item.reps ?? 0} reps</Text>
-      <Text style={styles.setText}>{item.weight ?? 0} kg</Text>
+    <View style={styles.setChip}>
+      <Text style={styles.setChipText}>{item.reps ?? 0} reps</Text>
+      <Text style={styles.setChipDivider}>•</Text>
+      <Text style={styles.setChipText}>{item.weight ?? 0} kg</Text>
     </View>
   );
 
   const renderExercise = ({ item }: { item: WorkoutExercise }) => {
     const setCount = item.sets?.length ?? 0;
-    const completedCount = item.sets?.filter((set) => set.completed).length ?? 0;
 
     return (
       <View style={styles.exerciseBlock}>
         <View style={styles.exerciseHeader}>
           <View style={styles.exerciseTitleWrap}>
-            <View style={styles.bullet} />
             <Text numberOfLines={1} style={styles.exerciseText}>
               {item.exercise?.name || 'Unnamed exercise'}
             </Text>
@@ -131,9 +139,6 @@ export default function HomeScreen() {
           <Text style={styles.exerciseMeta}>
             {setCount} {setCount === 1 ? 'set' : 'sets'}
           </Text>
-          <Text style={styles.exerciseMeta}>
-            {completedCount}/{setCount} done
-          </Text>
         </View>
 
         <FlatList
@@ -141,7 +146,9 @@ export default function HomeScreen() {
           keyExtractor={(_, index) => `${item.id}-set-${index}`}
           renderItem={renderSet}
           scrollEnabled={false}
-          contentContainerStyle={{ paddingTop: 6 }}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.setsList}
         />
       </View>
     );
@@ -166,8 +173,18 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{exerciseCount}</Text>
+          <View style={styles.headerActions}>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{exerciseCount}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={() => deleteWorkout(item.id)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.deleteBtnText}>Delete</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -191,7 +208,8 @@ export default function HomeScreen() {
       <View style={styles.topBar}>
         <Text style={styles.topTitle}>Home</Text>
         <Text style={styles.topSubtitle}>
-          {stats.totalWorkouts} workouts • {stats.totalExercises} exercises • {stats.totalSets} sets
+          {stats.totalWorkouts} workouts • {stats.totalExercises} exercises •{' '}
+          {stats.totalSets} sets
         </Text>
       </View>
 
@@ -262,21 +280,26 @@ const styles = StyleSheet.create({
 
   workoutHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
   },
 
   workoutTitle: {
     color: COLORS.TEXT,
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '900',
   },
 
   workoutMeta: {
-    marginTop: 4,
+    marginTop: 6,
     color: COLORS.MUTED,
     fontSize: 12,
     fontWeight: '700',
+  },
+
+  headerActions: {
+    alignItems: 'flex-end',
+    gap: 8,
   },
 
   countBadge: {
@@ -297,6 +320,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
+  deleteBtn: {
+    backgroundColor: COLORS.DANGER,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+
+  deleteBtnText: {
+    color: COLORS.TEXT,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
   exerciseBlock: {
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER,
@@ -315,14 +351,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 10,
-  },
-
-  bullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: COLORS.ACCENT,
   },
 
   exerciseText: {
@@ -351,7 +379,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 6,
-    marginLeft: 16,
   },
 
   exerciseMeta: {
@@ -360,46 +387,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  setRow: {
+  setsList: {
+    paddingTop: 10,
+    gap: 8,
+  },
+
+  setChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginLeft: 16,
-    marginTop: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
     backgroundColor: COLORS.CARD_2,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
-    borderRadius: 12,
-  },
-
-  checkCircle: {
-    width: 22,
-    height: 22,
     borderRadius: 999,
-    borderWidth: 2,
-    borderColor: COLORS.BORDER,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.CARD,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginRight: 8,
   },
 
-  checkCircleCompleted: {
-    backgroundColor: COLORS.SUCCESS,
-    borderColor: COLORS.SUCCESS,
-  },
-
-  checkText: {
-    color: COLORS.TEXT,
-    fontWeight: '900',
-    fontSize: 12,
-  },
-
-  setText: {
+  setChipText: {
     color: COLORS.TEXT,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+
+  setChipDivider: {
+    color: COLORS.MUTED,
+    fontSize: 12,
+    fontWeight: '800',
+    marginHorizontal: 8,
   },
 
   emptyExercisesText: {

@@ -1,7 +1,7 @@
 import Entypo from '@expo/vector-icons/Entypo';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const COLORS = {
   BG: '#121212',
@@ -14,18 +14,78 @@ const COLORS = {
   ACCENT_TEXT: '#FFFFFF',
 };
 
+interface RoutineSet {
+  id?: number;
+  reps?: number | null;
+  weight?: number | null;
+  completed?: boolean;
+}
+
+interface Exercise {
+  id: number;
+  name: string;
+  category?: string | null;
+}
+
+interface RoutineExercise {
+  id: number;
+  exercise: Exercise;
+  sets: RoutineSet[];
+}
+
+interface Routine {
+  id: number;
+  name: string;
+  exercises: RoutineExercise[];
+}
+
+const API_BASE =
+  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
+
 export default function HomeScreen() {
   const router = useRouter();
+  const [routines, setRoutines] = useState<Routine[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/routines`)
+      .then((res) => res.json())
+      .then((data: Routine[]) => {
+        if (Array.isArray(data)) setRoutines(data);
+        else console.error('Unexpected routines response', data);
+      })
+      .catch((err) => console.error('Error fetching routines:', err));
+  }, []);
+
+  const renderRoutine = ({ item }: { item: Routine }) => {
+    const exerciseCount = item.exercises?.length ?? 0;
+    const setCount =
+      item.exercises?.reduce((sum, ex) => sum + (ex.sets?.length ?? 0), 0) ?? 0;
+
+    return (
+      <TouchableOpacity
+  style={styles.savedRoutineItem}
+  activeOpacity={0.85}
+  onPress={() => router.push(`/screens/routine/${item.id}`)}
+>
+  <View style={{ flex: 1 }}>
+    <Text style={styles.savedRoutineTitle}>{item.name}</Text>
+    <Text style={styles.savedRoutineMeta}>
+      {item.exercises?.length ?? 0} exercises
+    </Text>
+  </View>
+
+  <Entypo name="chevron-right" size={18} color={COLORS.MUTED} />
+</TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      {/* Top Bar */}
       <View style={styles.topBar}>
         <Text style={styles.topTitle}>Workout</Text>
         <Text style={styles.topSubtitle}>Start a workout or manage routines</Text>
       </View>
 
-      {/* Primary Card */}
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.iconCircle}>
@@ -48,7 +108,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Routines Card */}
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.iconCircleAlt}>
@@ -72,11 +131,32 @@ export default function HomeScreen() {
             <Text style={styles.secondaryBtnText}>New Routine</Text>
           </View>
         </TouchableOpacity>
+      </View>
 
-        {/* Optional: small note */}
-        <Text style={styles.noteText}>
-          Tip: create routines for Push/Pull/Legs.
-        </Text>
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconCircleAlt}>
+            <Entypo name="folder" size={18} color={COLORS.TEXT} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Saved Routines</Text>
+            <Text style={styles.cardSub}>
+              Your saved workout templates.
+            </Text>
+          </View>
+        </View>
+
+        {routines.length === 0 ? (
+          <Text style={styles.emptyText}>No routines saved yet.</Text>
+        ) : (
+          <FlatList
+            data={routines}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderRoutine}
+            scrollEnabled={false}
+            contentContainerStyle={{ paddingTop: 4 }}
+          />
+        )}
       </View>
     </View>
   );
@@ -187,10 +267,53 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
-  noteText: {
-    marginTop: 10,
+  savedRoutineItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 8,
+  },
+
+  savedRoutineTitle: {
+    color: COLORS.TEXT,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  savedRoutineMeta: {
+    marginTop: 4,
     color: COLORS.MUTED,
     fontSize: 12,
     fontWeight: '700',
+  },
+
+  miniBadge: {
+    minWidth: 30,
+    height: 30,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  miniBadgeText: {
+    color: COLORS.TEXT,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+
+  emptyText: {
+    color: COLORS.MUTED,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 4,
   },
 });
