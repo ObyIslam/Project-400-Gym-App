@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -50,6 +51,8 @@ const API_BASE =
   Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
 
 export default function HomeScreen() {
+
+  const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -177,6 +180,14 @@ export default function HomeScreen() {
             <View style={styles.countBadge}>
               <Text style={styles.countBadgeText}>{exerciseCount}</Text>
             </View>
+
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => router.push(`/screens/workouts/${item.id}`)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.deleteBtn}
@@ -445,4 +456,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+
+  editBtn: {
+  backgroundColor: COLORS.ACCENT,
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 10,
+},
+
+editBtnText: {
+  color: COLORS.TEXT,
+  fontSize: 12,
+  fontWeight: '800',
+},
 });
