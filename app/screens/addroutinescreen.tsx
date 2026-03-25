@@ -1,16 +1,16 @@
+import { authFetch } from '@/app/lib/api';
 import { Stack, useRouter } from 'expo-router';
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 const COLORS = {
@@ -64,9 +64,6 @@ interface PagedResponse<T> {
   results: T[];
 }
 
-const API_BASE =
-  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
-
 const FALLBACK_IMAGE_URL = 'https://placehold.co/240x240/png?text=Exercise';
 const LIMIT = 80;
 
@@ -116,11 +113,7 @@ type SelectedRoutineExerciseCardProps = {
   item: RoutineExercise;
   onImageError: (exerciseId: number) => void;
   onUpdateSetReps: (exerciseId: number, setIndex: number, reps: string) => void;
-  onUpdateSetWeight: (
-    exerciseId: number,
-    setIndex: number,
-    weight: string
-  ) => void;
+  onUpdateSetWeight: (exerciseId: number, setIndex: number, weight: string) => void;
   onAddSet: (exerciseId: number) => void;
   onRemoveSet: (exerciseId: number, setIndex: number) => void;
   onRemoveExercise: (exerciseId: number) => void;
@@ -240,14 +233,19 @@ export default function AddRoutineScreen() {
 
     try {
       const query = (q ?? '').trim();
-      const url =
+      const endpoint =
         query.length > 0
-          ? `${API_BASE}/api/workouts/exercises?page=${p}&limit=${LIMIT}&q=${encodeURIComponent(
-              query
-            )}`
-          : `${API_BASE}/api/workouts/exercises?page=${p}&limit=${LIMIT}`;
+          ? `/api/workouts/exercises?page=${p}&limit=${LIMIT}&q=${encodeURIComponent(query)}`
+          : `/api/workouts/exercises?page=${p}&limit=${LIMIT}`;
 
-      const res = await fetch(url);
+      const res = await authFetch(endpoint, { method: 'GET' });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Fetch exercises failed:', res.status, errText);
+        return;
+      }
+
       const data: PagedResponse<Exercise> = await res.json();
 
       if (!data || !Array.isArray(data.results)) {
@@ -330,11 +328,7 @@ export default function AddRoutineScreen() {
     );
   };
 
-  const updateSetReps = (
-    exerciseId: number,
-    setIndex: number,
-    reps: string
-  ) => {
+  const updateSetReps = (exerciseId: number, setIndex: number, reps: string) => {
     setMyRoutine((prev) =>
       prev.map((item) =>
         item.exercise.id === exerciseId
@@ -349,11 +343,7 @@ export default function AddRoutineScreen() {
     );
   };
 
-  const updateSetWeight = (
-    exerciseId: number,
-    setIndex: number,
-    weight: string
-  ) => {
+  const updateSetWeight = (exerciseId: number, setIndex: number, weight: string) => {
     setMyRoutine((prev) =>
       prev.map((item) =>
         item.exercise.id === exerciseId
@@ -385,16 +375,15 @@ export default function AddRoutineScreen() {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/api/routines`, {
+      const res = await authFetch('/api/routines', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const err = await res.text();
-        console.error('Save routine failed:', err);
-        alert('Save failed. Backend routine endpoint still needed.');
+        console.error('Save routine failed:', res.status, err);
+        alert('Save failed.');
         return;
       }
 
@@ -472,9 +461,7 @@ export default function AddRoutineScreen() {
         ListEmptyComponent={
           <Text style={styles.emptyText}>No exercises added yet.</Text>
         }
-        contentContainerStyle={
-          myRoutine.length === 0 ? { flexGrow: 1 } : undefined
-        }
+        contentContainerStyle={myRoutine.length === 0 ? { flexGrow: 1 } : undefined}
       />
 
       <View style={styles.footerRow}>
@@ -539,7 +526,9 @@ export default function AddRoutineScreen() {
                   />
                 )}
                 onEndReached={() => {
-                  if (canLoadMore && !loadingMore) loadPage(page + 1, filterText);
+                  if (canLoadMore && !loadingMore) {
+                    loadPage(page + 1, filterText);
+                  }
                 }}
                 onEndReachedThreshold={0.6}
                 ListFooterComponent={

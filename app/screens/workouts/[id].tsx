@@ -1,3 +1,4 @@
+import { authFetch } from '@/app/lib/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -5,7 +6,6 @@ import {
   Alert,
   FlatList,
   Image,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -57,9 +57,6 @@ interface Workout {
   exercises: WorkoutExercise[];
 }
 
-const API_BASE =
-  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
-
 const FALLBACK_IMAGE_URL = 'https://placehold.co/240x240/png?text=Exercise';
 
 export default function EditWorkoutScreen() {
@@ -71,10 +68,21 @@ export default function EditWorkoutScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/workouts/user`)
-      .then((res) => res.json())
-      .then((data: Workout[]) => {
+    const loadWorkout = async () => {
+      try {
+        const res = await authFetch('/api/workouts/user', {
+          method: 'GET',
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          console.error('Error fetching workout list:', res.status, err);
+          return;
+        }
+
+        const data: Workout[] = await res.json();
         const found = data.find((w) => String(w.id) === String(id));
+
         if (found) {
           setWorkout({
             ...found,
@@ -89,9 +97,16 @@ export default function EditWorkoutScreen() {
             })),
           });
         }
-      })
-      .catch((err) => console.error('Error fetching workout:', err))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.error('Error fetching workout:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      loadWorkout();
+    }
   }, [id]);
 
   const updateSetReps = (exerciseId: number, setIndex: number, reps: string) => {
@@ -102,11 +117,11 @@ export default function EditWorkoutScreen() {
         exercises: prev.exercises.map((item) =>
           item.id === exerciseId
             ? {
-              ...item,
-              sets: item.sets.map((set, index) =>
-                index === setIndex ? { ...set, reps } : set
-              ),
-            }
+                ...item,
+                sets: item.sets.map((set, index) =>
+                  index === setIndex ? { ...set, reps } : set
+                ),
+              }
             : item
         ),
       };
@@ -121,11 +136,11 @@ export default function EditWorkoutScreen() {
         exercises: prev.exercises.map((item) =>
           item.id === exerciseId
             ? {
-              ...item,
-              sets: item.sets.map((set, index) =>
-                index === setIndex ? { ...set, weight } : set
-              ),
-            }
+                ...item,
+                sets: item.sets.map((set, index) =>
+                  index === setIndex ? { ...set, weight } : set
+                ),
+              }
             : item
         ),
       };
@@ -140,11 +155,11 @@ export default function EditWorkoutScreen() {
         exercises: prev.exercises.map((item) =>
           item.id === exerciseId
             ? {
-              ...item,
-              sets: item.sets.map((set, index) =>
-                index === setIndex ? { ...set, completed: !set.completed } : set
-              ),
-            }
+                ...item,
+                sets: item.sets.map((set, index) =>
+                  index === setIndex ? { ...set, completed: !set.completed } : set
+                ),
+              }
             : item
         ),
       };
@@ -159,9 +174,9 @@ export default function EditWorkoutScreen() {
         exercises: prev.exercises.map((item) =>
           item.id === exerciseId
             ? {
-              ...item,
-              sets: [...item.sets, { reps: '', weight: '', completed: false }],
-            }
+                ...item,
+                sets: [...item.sets, { reps: '', weight: '', completed: false }],
+              }
             : item
         ),
       };
@@ -175,7 +190,9 @@ export default function EditWorkoutScreen() {
         ...prev,
         exercises: prev.exercises.map((item) => {
           if (item.id !== exerciseId) return item;
+
           const updatedSets = item.sets.filter((_, index) => index !== setIndex);
+
           return {
             ...item,
             sets:
@@ -207,7 +224,7 @@ export default function EditWorkoutScreen() {
     try {
       setSaving(true);
 
-      const res = await fetch(`${API_BASE}/api/workouts/user/${workout.id}`, {
+      const res = await authFetch(`/api/workouts/user/${workout.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -215,15 +232,13 @@ export default function EditWorkoutScreen() {
 
       if (!res.ok) {
         const err = await res.text();
-        console.error('Update workout failed:', err);
+        console.error('Update workout failed:', res.status, err);
         Alert.alert('Save failed', 'Could not update workout.');
         return;
       }
 
       Alert.alert('Saved', 'Workout saved');
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 100);
+      router.replace('/(tabs)');
     } catch (err) {
       console.error('Update workout error:', err);
       Alert.alert('Save failed', 'Could not update workout.');

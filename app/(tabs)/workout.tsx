@@ -1,3 +1,4 @@
+import { authFetch } from '@/app/lib/api';
 import Entypo from '@expo/vector-icons/Entypo';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -47,13 +48,28 @@ export default function HomeScreen() {
   const [routines, setRoutines] = useState<Routine[]>([]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/routines`)
-      .then((res) => res.json())
-      .then((data: Routine[]) => {
+    const loadRoutines = async () => {
+      try {
+        const res = await authFetch('/api/routines', {
+          method: 'GET',
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('Fetch routines failed:', res.status, errText);
+          return;
+        }
+
+        const data: Routine[] = await res.json();
+
         if (Array.isArray(data)) setRoutines(data);
         else console.error('Unexpected routines response', data);
-      })
-      .catch((err) => console.error('Error fetching routines:', err));
+      } catch (err) {
+        console.error('Error fetching routines:', err);
+      }
+    };
+
+    loadRoutines();
   }, []);
 
   const renderRoutine = ({ item }: { item: Routine }) => {
@@ -63,19 +79,19 @@ export default function HomeScreen() {
 
     return (
       <TouchableOpacity
-  style={styles.savedRoutineItem}
-  activeOpacity={0.85}
-  onPress={() => router.push(`/screens/routine/${item.id}`)}
->
-  <View style={{ flex: 1 }}>
-    <Text style={styles.savedRoutineTitle}>{item.name}</Text>
-    <Text style={styles.savedRoutineMeta}>
-      {item.exercises?.length ?? 0} exercises
-    </Text>
-  </View>
+        style={styles.savedRoutineItem}
+        activeOpacity={0.85}
+        onPress={() => router.push(`/screens/routine/${item.id}`)}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.savedRoutineTitle}>{item.name}</Text>
+          <Text style={styles.savedRoutineMeta}>
+            {item.exercises?.length ?? 0} exercises
+          </Text>
+        </View>
 
-  <Entypo name="chevron-right" size={18} color={COLORS.MUTED} />
-</TouchableOpacity>
+        <Entypo name="chevron-right" size={18} color={COLORS.MUTED} />
+      </TouchableOpacity>
     );
   };
 

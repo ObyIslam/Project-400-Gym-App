@@ -1,3 +1,4 @@
+import { authFetch } from '@/app/lib/api';
 import { Stack, useRouter } from 'expo-router';
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -5,7 +6,6 @@ import {
   FlatList,
   Image,
   Modal,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -66,9 +66,6 @@ interface PagedResponse<T> {
   limit: number;
   results: T[];
 }
-
-const API_BASE =
-  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
 
 const FALLBACK_IMAGE_URL = 'https://placehold.co/240x240/png?text=Exercise';
 const LIMIT = 80;
@@ -252,45 +249,51 @@ export default function AddWorkoutScreen() {
   const canLoadMore = total === null || exercises.length < total;
 
   const loadPage = async (p: number, q?: string) => {
-    if (loadingGuard.current) return;
-    if (p !== 1 && !canLoadMore) return;
+  if (loadingGuard.current) return;
+  if (p !== 1 && !canLoadMore) return;
 
-    loadingGuard.current = true;
-    p === 1 ? setLoadingInitial(true) : setLoadingMore(true);
+  loadingGuard.current = true;
+  p === 1 ? setLoadingInitial(true) : setLoadingMore(true);
 
-    try {
-      const query = (q ?? '').trim();
-      const url =
-        query.length > 0
-          ? `${API_BASE}/api/workouts/exercises?page=${p}&limit=${LIMIT}&q=${encodeURIComponent(
-              query
-            )}`
-          : `${API_BASE}/api/workouts/exercises?page=${p}&limit=${LIMIT}`;
+  try {
+    const query = (q ?? '').trim();
 
-      const res = await fetch(url);
-      const data: PagedResponse<Exercise> = await res.json();
+    const endpoint =
+      query.length > 0
+        ? `/api/workouts/exercises?page=${p}&limit=${LIMIT}&q=${encodeURIComponent(query)}`
+        : `/api/workouts/exercises?page=${p}&limit=${LIMIT}`;
 
-      if (!data || !Array.isArray(data.results)) {
-        console.error('Unexpected paged exercises response', data);
-        return;
-      }
+    const res = await authFetch(endpoint);
 
-      setTotal(data.count);
-      setPage(data.page);
-
-      setExercises((prev) => {
-        const next = p === 1 ? [] : prev;
-        const map = new Map<number, Exercise>(next.map((e) => [e.id, e]));
-        for (const e of data.results) map.set(e.id, e);
-        return Array.from(map.values());
-      });
-    } catch (err) {
-      console.error('Fetch exercises error:', err);
-    } finally {
-      p === 1 ? setLoadingInitial(false) : setLoadingMore(false);
-      loadingGuard.current = false;
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Fetch exercises failed:', res.status, errText);
+      return;
     }
-  };
+
+    const data: PagedResponse<Exercise> = await res.json();
+
+    if (!data || !Array.isArray(data.results)) {
+      console.error('Unexpected paged exercises response', data);
+      return;
+    }
+
+    setTotal(data.count);
+    setPage(data.page);
+
+    setExercises((prev) => {
+      const next = p === 1 ? [] : prev;
+      const map = new Map<number, Exercise>(next.map((e) => [e.id, e]));
+      for (const e of data.results) map.set(e.id, e);
+      return Array.from(map.values());
+    });
+  } catch (err) {
+    console.error('Fetch exercises error:', err);
+  } finally {
+    p === 1 ? setLoadingInitial(false) : setLoadingMore(false);
+    loadingGuard.current = false;
+  }
+};
 
   useEffect(() => {
     loadPage(1);
@@ -329,10 +332,7 @@ export default function AddWorkoutScreen() {
         item.exercise.id === exerciseId
           ? {
               ...item,
-              sets: [
-                ...item.sets,
-                { reps: '', weight: '', completed: false },
-              ],
+              sets: [...item.sets, { reps: '', weight: '', completed: false }],
             }
           : item
       )
@@ -430,7 +430,7 @@ export default function AddWorkoutScreen() {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/api/workouts/user`, {
+      const res = await authFetch('/api/workouts/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

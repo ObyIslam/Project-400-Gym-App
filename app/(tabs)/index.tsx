@@ -1,8 +1,9 @@
+import { useAuth } from '@/app/context/AuthContext';
+import { authFetch } from '@/app/lib/api';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -47,28 +48,44 @@ interface Workout {
   exercises: WorkoutExercise[];
 }
 
-const API_BASE =
-  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
-
 export default function HomeScreen() {
-
   const router = useRouter();
+  const { token, isLoading } = useAuth();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadWorkouts = () => {
-    return fetch(`${API_BASE}/api/workouts/user`)
-      .then((res) => res.json())
-      .then((data: Workout[]) => {
-        if (Array.isArray(data)) setWorkouts(data);
-        else console.error('Unexpected workouts response', data);
-      })
-      .catch((err) => console.error('Error fetching workouts:', err));
+    const loadWorkouts = async () => {
+    if (!token) return;
+
+    try {
+      const res = await authFetch('/api/workouts/user', {
+        method: 'GET',
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Fetch workouts failed:', res.status, errText);
+        return;
+      }
+
+      const data: Workout[] = await res.json();
+
+      if (Array.isArray(data)) {
+        setWorkouts(data);
+      } else {
+        console.error('Unexpected workouts response:', data);
+      }
+    } catch (err) {
+      console.error('Error fetching workouts:', err);
+    }
   };
 
   useEffect(() => {
+    if (isLoading) return;
+    if (!token) return;
+
     loadWorkouts();
-  }, []);
+  }, [token, isLoading]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -78,13 +95,13 @@ export default function HomeScreen() {
 
   const deleteWorkout = async (id: number) => {
     try {
-      const res = await fetch(`${API_BASE}/api/workouts/user/${id}`, {
+      const res = await authFetch(`/api/workouts/user/${id}`, {
         method: 'DELETE',
       });
 
       if (!res.ok) {
         const err = await res.text();
-        console.error('Delete workout failed:', err);
+        console.error('Delete workout failed:', res.status, err);
         return;
       }
 
@@ -103,8 +120,7 @@ export default function HomeScreen() {
     const totalSets = workouts.reduce(
       (sum, w) =>
         sum +
-        (w.exercises?.reduce((setSum, ex) => setSum + (ex.sets?.length ?? 0), 0) ??
-          0),
+        (w.exercises?.reduce((setSum, ex) => setSum + (ex.sets?.length ?? 0), 0) ?? 0),
       0
     );
 
@@ -219,8 +235,7 @@ export default function HomeScreen() {
       <View style={styles.topBar}>
         <Text style={styles.topTitle}>Home</Text>
         <Text style={styles.topSubtitle}>
-          {stats.totalWorkouts} workouts • {stats.totalExercises} exercises •{' '}
-          {stats.totalSets} sets
+          {stats.totalWorkouts} workouts • {stats.totalExercises} exercises • {stats.totalSets} sets
         </Text>
       </View>
 
@@ -458,15 +473,15 @@ const styles = StyleSheet.create({
   },
 
   editBtn: {
-  backgroundColor: COLORS.ACCENT,
-  paddingHorizontal: 10,
-  paddingVertical: 6,
-  borderRadius: 10,
-},
+    backgroundColor: COLORS.ACCENT,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
 
-editBtnText: {
-  color: COLORS.TEXT,
-  fontSize: 12,
-  fontWeight: '800',
-},
+  editBtnText: {
+    color: COLORS.TEXT,
+    fontSize: 12,
+    fontWeight: '800',
+  },
 });
