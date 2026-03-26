@@ -1,8 +1,9 @@
+import { useAuth } from '@/app/context/AuthContext';
 import { authFetch } from '@/app/lib/api';
 import Entypo from '@expo/vector-icons/Entypo';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const COLORS = {
   BG: '#121212',
@@ -40,42 +41,46 @@ interface Routine {
   exercises: RoutineExercise[];
 }
 
-const API_BASE =
-  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
-
 export default function HomeScreen() {
   const router = useRouter();
+  const { token, isLoading } = useAuth();
   const [routines, setRoutines] = useState<Routine[]>([]);
 
-  useEffect(() => {
-    const loadRoutines = async () => {
-      try {
-        const res = await authFetch('/api/routines', {
-          method: 'GET',
-        });
+  const loadRoutines = async () => {
+    if (!token) return;
 
-        if (!res.ok) {
-          const errText = await res.text();
-          console.error('Fetch routines failed:', res.status, errText);
-          return;
-        }
+    try {
+      const res = await authFetch('/api/routines/user', {
+        method: 'GET',
+      });
 
-        const data: Routine[] = await res.json();
-
-        if (Array.isArray(data)) setRoutines(data);
-        else console.error('Unexpected routines response', data);
-      } catch (err) {
-        console.error('Error fetching routines:', err);
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Fetch routines failed:', res.status, errText);
+        return;
       }
-    };
+
+      const data: Routine[] = await res.json();
+
+      if (Array.isArray(data)) {
+        setRoutines(data);
+      } else {
+        console.error('Unexpected routines response', data);
+      }
+    } catch (err) {
+      console.error('Error fetching routines:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!token) return;
 
     loadRoutines();
-  }, []);
+  }, [token, isLoading]);
 
   const renderRoutine = ({ item }: { item: Routine }) => {
     const exerciseCount = item.exercises?.length ?? 0;
-    const setCount =
-      item.exercises?.reduce((sum, ex) => sum + (ex.sets?.length ?? 0), 0) ?? 0;
 
     return (
       <TouchableOpacity
@@ -86,7 +91,7 @@ export default function HomeScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.savedRoutineTitle}>{item.name}</Text>
           <Text style={styles.savedRoutineMeta}>
-            {item.exercises?.length ?? 0} exercises
+            {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
           </Text>
         </View>
 
@@ -131,9 +136,7 @@ export default function HomeScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>Routines</Text>
-            <Text style={styles.cardSub}>
-              Save templates to reuse later.
-            </Text>
+            <Text style={styles.cardSub}>Save templates to reuse later.</Text>
           </View>
         </View>
 
@@ -156,9 +159,7 @@ export default function HomeScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>Saved Routines</Text>
-            <Text style={styles.cardSub}>
-              Your saved workout templates.
-            </Text>
+            <Text style={styles.cardSub}>Your saved workout templates.</Text>
           </View>
         </View>
 
@@ -306,24 +307,6 @@ const styles = StyleSheet.create({
     color: COLORS.MUTED,
     fontSize: 12,
     fontWeight: '700',
-  },
-
-  miniBadge: {
-    minWidth: 30,
-    height: 30,
-    paddingHorizontal: 8,
-    borderRadius: 999,
-    backgroundColor: COLORS.CARD,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  miniBadgeText: {
-    color: COLORS.TEXT,
-    fontSize: 12,
-    fontWeight: '900',
   },
 
   emptyText: {
