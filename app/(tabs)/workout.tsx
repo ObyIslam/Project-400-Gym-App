@@ -155,6 +155,31 @@ export default function HomeScreen() {
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View style={styles.iconCircleAlt}>
+            <Entypo name="camera" size={18} color={COLORS.TEXT} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Exercise Form Analysis</Text>
+            <Text style={styles.cardSub}>
+              Upload a side-view image or video and get AI feedback.
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          activeOpacity={0.85}
+          onPress={() => router.push('/screens/exercise-analysis' as any)}
+        >
+          <View style={styles.btnRow}>
+            <Entypo name="camera" size={18} color={COLORS.TEXT} />
+            <Text style={styles.secondaryBtnText}>Analyze Exercise</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconCircleAlt}>
             <Entypo name="folder" size={18} color={COLORS.TEXT} />
           </View>
           <View style={{ flex: 1 }}>
