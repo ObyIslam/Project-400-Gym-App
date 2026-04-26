@@ -79,23 +79,25 @@ const ExerciseLibraryCard = memo(function ExerciseLibraryCard({
   onImageError,
 }: ExerciseLibraryCardProps) {
   return (
-    <View style={styles.card}>
-      <Image
-        source={{ uri: item.imageUrl ?? FALLBACK_IMAGE_URL }}
-        style={styles.exerciseImage}
-        resizeMode="cover"
-        onError={() => onImageError(item.id)}
-      />
+    <View style={styles.libraryCard}>
+      <View style={styles.libraryImageWrap}>
+        <Image
+          source={{ uri: item.imageUrl ?? FALLBACK_IMAGE_URL }}
+          style={styles.libraryExerciseImage}
+          resizeMode="cover"
+          onError={() => onImageError(item.id)}
+        />
+      </View>
 
-      <View style={styles.cardBody}>
-        <Text numberOfLines={2} style={styles.cardTitle}>
+      <View style={styles.libraryCardBody}>
+        <Text numberOfLines={2} style={styles.libraryCardTitle}>
           {item.name || 'No Name'}
         </Text>
-        <Text numberOfLines={1} style={styles.cardSub}>
+        <Text numberOfLines={1} style={styles.libraryCardSub}>
           {item.category || 'Unknown muscle'}
         </Text>
 
-        <View style={styles.cardActions}>
+        <View style={styles.libraryCardActions}>
           <TouchableOpacity
             style={[styles.smallBtn, styles.addBtn]}
             onPress={() => onAddExercise(item)}
@@ -129,15 +131,17 @@ const SelectedRoutineExerciseCard = memo(function SelectedRoutineExerciseCard({
   onRemoveExercise,
 }: SelectedRoutineExerciseCardProps) {
   return (
-    <View style={styles.card}>
-      <Image
-        source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
-        style={styles.exerciseImage}
-        resizeMode="cover"
-        onError={() => onImageError(item.exercise.id)}
-      />
+    <View style={styles.selectedCard}>
+      <View style={styles.selectedImageWrap}>
+        <Image
+          source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
+          style={styles.selectedExerciseImage}
+          resizeMode="cover"
+          onError={() => onImageError(item.exercise.id)}
+        />
+      </View>
 
-      <View style={styles.cardBody}>
+      <View style={styles.selectedCardBody}>
         <Text numberOfLines={2} style={styles.cardTitle}>
           {item.exercise.name || 'No Name'}
         </Text>
@@ -628,10 +632,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 12,
   },
+  libraryCard: {
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 16,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  selectedCard: {
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 16,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    minHeight: 156,
+  },
+  libraryImageWrap: {
+    width: 92,
+    alignSelf: 'stretch',
+    backgroundColor: '#141414',
+    borderRightWidth: 1,
+    borderRightColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  libraryExerciseImage: {
+    width: 74,
+    height: 74,
+    borderRadius: 12,
+    backgroundColor: '#0B0B0B',
+  },
 
   exerciseImage: {
     width: 92,
     height: 92,
+    backgroundColor: '#0B0B0B',
+  },
+  selectedImageWrap: {
+    width: 104,
+    alignSelf: 'stretch',
+    backgroundColor: '#141414',
+    borderRightWidth: 1,
+    borderRightColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  selectedExerciseImage: {
+    width: 86,
+    height: 86,
+    borderRadius: 12,
     backgroundColor: '#0B0B0B',
   },
 
@@ -639,6 +696,28 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  libraryCardBody: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  selectedCardBody: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  libraryCardTitle: {
+    color: COLORS.TEXT,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  libraryCardSub: {
+    color: COLORS.MUTED,
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '800',
+    marginBottom: 8,
   },
 
   cardTitle: {
@@ -731,6 +810,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: 4,
+  },
+  libraryCardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
 
   cardActionsBetween: {

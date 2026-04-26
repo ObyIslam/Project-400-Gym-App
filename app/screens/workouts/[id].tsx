@@ -6,10 +6,10 @@ import {
   Alert,
   FlatList,
   Image,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -249,11 +249,13 @@ export default function EditWorkoutScreen() {
 
   const renderExercise = ({ item }: { item: WorkoutExercise }) => (
     <View style={styles.card}>
-      <Image
-        source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
-        style={styles.exerciseImage}
-        resizeMode="cover"
-      />
+      <View style={styles.imageWrap}>
+        <Image
+          source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
+          style={styles.exerciseImage}
+          resizeMode="cover"
+        />
+      </View>
 
       <View style={styles.cardBody}>
         <Text numberOfLines={2} style={styles.cardTitle}>
@@ -262,6 +264,14 @@ export default function EditWorkoutScreen() {
         <Text numberOfLines={1} style={styles.cardSub}>
           {item.exercise.category || 'Unknown muscle'}
         </Text>
+
+        <View style={styles.setLabelsRow}>
+          <Text style={styles.setLabelSpacer} />
+          <Text style={styles.setInputLabel}>Reps</Text>
+          <Text style={styles.setInputLabel}>Weight</Text>
+          <Text style={styles.setLabelSpacer} />
+          <Text style={styles.setLabelSpacer} />
+        </View>
 
         {item.sets.map((set, setIndex) => (
           <View key={setIndex} style={styles.setRow}>
@@ -287,10 +297,9 @@ export default function EditWorkoutScreen() {
               onChangeText={(text) => updateSetWeight(item.id, setIndex, text)}
             />
 
-            <TouchableOpacity
+            <Pressable
               style={styles.checkboxContainer}
               onPress={() => toggleSetCompleted(item.id, setIndex)}
-              activeOpacity={0.8}
             >
               <View
                 style={[
@@ -300,25 +309,29 @@ export default function EditWorkoutScreen() {
               >
                 {set.completed ? <Text style={styles.checkboxTick}>✓</Text> : null}
               </View>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={styles.removeSetBtn}
+            <Pressable
+              style={({ pressed, hovered }) => [
+                styles.removeSetBtn,
+                (pressed || hovered) && styles.removeSetBtnActive,
+              ]}
               onPress={() => removeSet(item.id, setIndex)}
-              activeOpacity={0.85}
             >
               <Text style={styles.removeSetText}>×</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ))}
 
-        <TouchableOpacity
-          style={styles.addSetBtn}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.addSetBtn,
+            (pressed || hovered) && styles.secondaryBtnActive,
+          ]}
           onPress={() => addSet(item.id)}
-          activeOpacity={0.85}
         >
           <Text style={styles.addSetBtnText}>+ Add Set</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
@@ -359,22 +372,25 @@ export default function EditWorkoutScreen() {
         contentContainerStyle={{ paddingBottom: 20 }}
       />
 
-      <TouchableOpacity
-        style={[styles.finishBtn, saving && styles.finishBtnDisabled]}
+      <Pressable
+        style={({ pressed, hovered }) => [
+          styles.finishBtn,
+          (pressed || hovered) && styles.finishBtnActive,
+          saving && styles.finishBtnDisabled,
+        ]}
         onPress={saveWorkout}
-        activeOpacity={0.85}
         disabled={saving}
       >
         <Text style={styles.finishBtnText}>
           {saving ? 'Saving...' : 'Save Changes'}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.BG, padding: 18 },
+  container: { flex: 1, backgroundColor: COLORS.BG, padding: 16 },
   center: {
     flex: 1,
     backgroundColor: COLORS.BG,
@@ -383,17 +399,17 @@ const styles = StyleSheet.create({
   },
   header: {
     color: COLORS.TEXT,
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '900',
-    marginTop: 10,
-    marginBottom: 18,
+    marginTop: 6,
+    marginBottom: 14,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 6,
-    marginBottom: 10,
+    marginTop: 2,
+    marginBottom: 12,
   },
   sectionTitle: {
     color: COLORS.TEXT,
@@ -428,41 +444,72 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.CARD,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
     flexDirection: 'row',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 14,
+    minHeight: 156,
+  },
+  imageWrap: {
+    width: 104,
+    alignSelf: 'stretch',
+    backgroundColor: '#141414',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 14,
+    paddingBottom: 10,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.BORDER,
   },
   exerciseImage: {
-    width: 92,
-    height: 92,
+    width: 86,
+    height: 86,
+    borderRadius: 12,
     backgroundColor: '#0B0B0B',
   },
   cardBody: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
   },
   cardTitle: {
     color: COLORS.TEXT,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '900',
   },
   cardSub: {
     color: COLORS.MUTED,
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 4,
     fontWeight: '800',
     marginBottom: 10,
   },
+  setLabelsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  setLabelSpacer: {
+    width: 24,
+  },
+  setInputLabel: {
+    width: 52,
+    color: COLORS.MUTED,
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   setRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: 6,
+    marginBottom: 10,
+    width: '100%',
   },
   setNumberBox: {
-    width: 28,
+    width: 24,
     height: 36,
     borderRadius: 8,
     backgroundColor: COLORS.CARD_2,
@@ -473,25 +520,26 @@ const styles = StyleSheet.create({
   },
   setNumberText: {
     color: COLORS.TEXT,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
   },
   smallInput: {
-    width: 70,
+    width: 52,
     height: 36,
     backgroundColor: COLORS.CARD_2,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     borderRadius: 8,
     color: COLORS.TEXT,
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
-    padding: 4,
+    paddingHorizontal: 6,
   },
   checkboxContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 2,
+    marginLeft: 0,
+    width: 24,
   },
   checkbox: {
     width: 24,
@@ -513,8 +561,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   removeSetBtn: {
-    width: 26,
-    height: 26,
+    width: 22,
+    height: 22,
     borderRadius: 8,
     backgroundColor: COLORS.CARD_2,
     borderWidth: 1,
@@ -522,22 +570,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  removeSetBtnActive: {
+    backgroundColor: '#1f1f1f',
+  },
   removeSetText: {
     color: COLORS.TEXT,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '900',
     marginTop: -1,
   },
   addSetBtn: {
     alignSelf: 'flex-start',
-    marginTop: 4,
-    marginBottom: 10,
+    marginTop: 2,
+    marginBottom: 6,
     paddingVertical: 6,
     paddingHorizontal: 10,
     backgroundColor: COLORS.CARD_2,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     borderRadius: 10,
+  },
+  secondaryBtnActive: {
+    backgroundColor: '#1f1f1f',
   },
   addSetBtnText: {
     color: COLORS.TEXT,
@@ -551,6 +605,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 10,
+  },
+  finishBtnActive: {
+    backgroundColor: '#2d69c5',
   },
   finishBtnDisabled: {
     opacity: 0.7,

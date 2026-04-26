@@ -265,11 +265,13 @@ export default function RoutineDetailScreen() {
 
   const renderExercise = ({ item }: { item: RoutineExercise }) => (
     <View style={styles.card}>
-      <Image
-        source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
-        style={styles.exerciseImage}
-        resizeMode="cover"
-      />
+      <View style={styles.imageWrap}>
+        <Image
+          source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
+          style={styles.exerciseImage}
+          resizeMode="cover"
+        />
+      </View>
 
       <View style={styles.cardBody}>
         <Text numberOfLines={2} style={styles.cardTitle}>
@@ -455,12 +457,26 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
+    minHeight: 156,
+  },
+  imageWrap: {
+    width: 104,
+    alignSelf: 'stretch',
+    backgroundColor: '#141414',
+    borderRightWidth: 1,
+    borderRightColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 14,
+    paddingBottom: 10,
   },
 
   exerciseImage: {
-    width: 92,
-    height: 92,
+    width: 86,
+    height: 86,
+    borderRadius: 12,
     backgroundColor: '#0B0B0B',
   },
 

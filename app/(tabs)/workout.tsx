@@ -214,18 +214,25 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.BG },
-  content: { padding: 16, paddingBottom: 22 },
+  content: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 22 },
 
   topBar: {
-    paddingTop: 14,
-    paddingBottom: 16,
+    paddingTop: 18,
+    paddingBottom: 14,
+    paddingHorizontal: 18,
+    marginHorizontal: -16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+    backgroundColor: COLORS.BG,
     marginBottom: 12,
   },
 
   topTitle: {
     color: COLORS.TEXT,
     fontSize: 28,
+    lineHeight: 34,
     fontWeight: '900',
+    includeFontPadding: false,
   },
 
   topSubtitle: {
@@ -241,7 +248,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.BORDER,
     borderRadius: 18,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   cardHeaderRow: {
@@ -282,6 +289,7 @@ const styles = StyleSheet.create({
     color: COLORS.MUTED,
     fontSize: 12,
     fontWeight: '700',
+    lineHeight: 17,
   },
 
   primaryBtn: {
@@ -289,6 +297,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
+    marginTop: 2,
   },
   primaryBtnActive: { backgroundColor: '#2d69c5' },
 
@@ -305,6 +314,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
+    marginTop: 2,
   },
   secondaryPressState: { backgroundColor: '#1f1f1f' },
 
@@ -328,7 +338,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     borderRadius: 14,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 13,
     marginTop: 8,
   },
 

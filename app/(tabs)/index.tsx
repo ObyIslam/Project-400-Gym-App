@@ -1,7 +1,7 @@
 import { useAuth } from '@/app/context/AuthContext';
 import { authFetch } from '@/app/lib/api';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -114,22 +114,6 @@ export default function HomeScreen() {
     }
   };
 
-  const stats = useMemo(() => {
-    const totalWorkouts = workouts.length;
-    const totalExercises = workouts.reduce(
-      (sum, w) => sum + (w.exercises?.length ?? 0),
-      0
-    );
-    const totalSets = workouts.reduce(
-      (sum, w) =>
-        sum +
-        (w.exercises?.reduce((setSum, ex) => setSum + (ex.sets?.length ?? 0), 0) ?? 0),
-      0
-    );
-
-    return { totalWorkouts, totalExercises, totalSets };
-  }, [workouts]);
-
   const renderSet = ({ item }: { item: WorkoutSet }) => (
     <View style={styles.setChip}>
       <Text style={styles.setChipText}>{item.reps ?? 0} reps</Text>
@@ -189,37 +173,45 @@ export default function HomeScreen() {
             <Text numberOfLines={1} style={styles.workoutTitle}>
               {title}
             </Text>
-            <Text style={styles.workoutMeta}>
-              {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'} •{' '}
-              {totalSetCount} {totalSetCount === 1 ? 'set' : 'sets'}
-            </Text>
-          </View>
-
-          <View style={styles.headerActions}>
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{exerciseCount}</Text>
+            <View style={styles.workoutStatsRow}>
+              <View style={styles.metaChip}>
+                <Text style={styles.metaChipText}>
+                  {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+                </Text>
+              </View>
+              <View style={styles.metaChip}>
+                <Text style={styles.metaChipText}>
+                  {totalSetCount} {totalSetCount === 1 ? 'set' : 'sets'}
+                </Text>
+              </View>
             </View>
-
-            <Pressable
-              style={({ pressed, hovered }) => [
-                styles.editBtn,
-                (pressed || hovered) && styles.editBtnActive,
-              ]}
-              onPress={() => router.push(`/screens/workouts/${item.id}`)}
-            >
-              <Text style={styles.editBtnText}>Edit</Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed, hovered }) => [
-                styles.deleteBtn,
-                (pressed || hovered) && styles.deleteBtnActive,
-              ]}
-              onPress={() => deleteWorkout(item.id)}
-            >
-              <Text style={styles.deleteBtnText}>Delete</Text>
-            </Pressable>
           </View>
+
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{exerciseCount}</Text>
+          </View>
+        </View>
+
+        <View style={styles.workoutActionsRow}>
+          <Pressable
+            style={({ pressed, hovered }) => [
+              styles.editBtn,
+              (pressed || hovered) && styles.editBtnActive,
+            ]}
+            onPress={() => router.push(`/screens/workouts/${item.id}`)}
+          >
+            <Text style={styles.editBtnText}>Open Workout</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed, hovered }) => [
+              styles.deleteBtn,
+              (pressed || hovered) && styles.deleteBtnActive,
+            ]}
+            onPress={() => deleteWorkout(item.id)}
+          >
+            <Text style={styles.deleteBtnText}>Delete</Text>
+          </Pressable>
         </View>
 
         {exerciseCount === 0 ? (
@@ -241,9 +233,6 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={[styles.topBar, isNarrow && styles.topBarCompact]}>
         <Text style={styles.topTitle}>Home</Text>
-        <Text style={styles.topSubtitle}>
-          {stats.totalWorkouts} workouts • {stats.totalExercises} exercises • {stats.totalSets} sets
-        </Text>
       </View>
 
       <FlatList
@@ -291,14 +280,9 @@ const styles = StyleSheet.create({
   topTitle: {
     color: COLORS.TEXT,
     fontSize: 28,
+    lineHeight: 34,
     fontWeight: '900',
-  },
-
-  topSubtitle: {
-    marginTop: 4,
-    color: COLORS.MUTED,
-    fontSize: 13,
-    fontWeight: '600',
+    includeFontPadding: false,
   },
 
   listContent: {
@@ -315,9 +299,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.CARD,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   workoutHeader: {
@@ -332,16 +316,24 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  workoutMeta: {
-    marginTop: 6,
-    color: COLORS.MUTED,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  headerActions: {
-    alignItems: 'flex-end',
+  workoutStatsRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+    flexWrap: 'wrap',
     gap: 8,
+  },
+  metaChip: {
+    backgroundColor: COLORS.CARD_2,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  metaChipText: {
+    color: COLORS.MUTED,
+    fontSize: 11,
+    fontWeight: '800',
   },
 
   countBadge: {
@@ -362,11 +354,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
+  workoutActionsRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 8,
+  },
+
   deleteBtn: {
     backgroundColor: COLORS.DANGER,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderRadius: 10,
+    minWidth: 84,
+    alignItems: 'center',
   },
   deleteBtnActive: { backgroundColor: '#d64233' },
 
@@ -491,9 +491,11 @@ const styles = StyleSheet.create({
 
   editBtn: {
     backgroundColor: COLORS.ACCENT,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderRadius: 10,
+    alignItems: 'center',
   },
   editBtnActive: { backgroundColor: '#2d69c5' },
 

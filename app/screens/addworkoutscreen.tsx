@@ -6,10 +6,10 @@ import {
   FlatList,
   Image,
   Modal,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -82,30 +82,35 @@ const ExerciseLibraryCard = memo(function ExerciseLibraryCard({
   onImageError,
 }: ExerciseLibraryCardProps) {
   return (
-    <View style={styles.card}>
-      <Image
-        source={{ uri: item.imageUrl ?? FALLBACK_IMAGE_URL }}
-        style={styles.exerciseImage}
-        resizeMode="cover"
-        onError={() => onImageError(item.id)}
-      />
+    <View style={styles.libraryCard}>
+      <View style={styles.libraryImageWrap}>
+        <Image
+          source={{ uri: item.imageUrl ?? FALLBACK_IMAGE_URL }}
+          style={styles.libraryExerciseImage}
+          resizeMode="cover"
+          onError={() => onImageError(item.id)}
+        />
+      </View>
 
-      <View style={styles.cardBody}>
-        <Text numberOfLines={2} style={styles.cardTitle}>
+      <View style={styles.libraryCardBody}>
+        <Text numberOfLines={2} style={styles.libraryCardTitle}>
           {item.name || 'No Name'}
         </Text>
-        <Text numberOfLines={1} style={styles.cardSub}>
+        <Text numberOfLines={1} style={styles.libraryCardSub}>
           {item.category || 'Unknown muscle'}
         </Text>
 
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={[styles.smallBtn, styles.addBtn]}
+        <View style={styles.libraryCardActions}>
+          <Pressable
+            style={({ pressed, hovered }) => [
+              styles.smallBtn,
+              styles.addBtn,
+              (pressed || hovered) && styles.addBtnActive,
+            ]}
             onPress={() => onAddExercise(item)}
-            activeOpacity={0.85}
           >
             <Text style={styles.smallBtnText}>Add</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -138,21 +143,30 @@ const SelectedExerciseCard = memo(function SelectedExerciseCard({
   onRemoveExercise,
 }: SelectedExerciseCardProps) {
   return (
-    <View style={styles.card}>
-      <Image
-        source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
-        style={styles.exerciseImage}
-        resizeMode="cover"
-        onError={() => onImageError(item.exercise.id)}
-      />
+    <View style={styles.selectedCard}>
+      <View style={styles.selectedImageWrap}>
+        <Image
+          source={{ uri: item.exercise.imageUrl ?? FALLBACK_IMAGE_URL }}
+          style={styles.selectedExerciseImage}
+          resizeMode="cover"
+          onError={() => onImageError(item.exercise.id)}
+        />
+      </View>
 
-      <View style={styles.cardBody}>
-        <Text numberOfLines={2} style={styles.cardTitle}>
+      <View style={styles.selectedCardBody}>
+        <Text numberOfLines={2} style={styles.selectedCardTitle}>
           {item.exercise.name || 'No Name'}
         </Text>
-        <Text numberOfLines={1} style={styles.cardSub}>
+        <Text numberOfLines={1} style={styles.selectedCardSub}>
           {item.exercise.category || 'Unknown muscle'}
         </Text>
+        <View style={styles.setLabelsRow}>
+          <Text style={styles.setLabelSpacer} />
+          <Text style={styles.setInputLabel}>Reps</Text>
+          <Text style={styles.setInputLabel}>Weight</Text>
+          <Text style={styles.setLabelSpacer} />
+          <Text style={styles.setLabelSpacer} />
+        </View>
 
         {item.sets.map((set, setIndex) => (
           <View key={setIndex} style={styles.setRow}>
@@ -182,10 +196,9 @@ const SelectedExerciseCard = memo(function SelectedExerciseCard({
               }
             />
 
-            <TouchableOpacity
+            <Pressable
               style={styles.checkboxContainer}
               onPress={() => onToggleSetCompleted(item.exercise.id, setIndex)}
-              activeOpacity={0.8}
             >
               <View
                 style={[
@@ -195,34 +208,41 @@ const SelectedExerciseCard = memo(function SelectedExerciseCard({
               >
                 {set.completed ? <Text style={styles.checkboxTick}>✓</Text> : null}
               </View>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={styles.removeSetBtn}
+            <Pressable
+              style={({ pressed, hovered }) => [
+                styles.removeSetBtn,
+                (pressed || hovered) && styles.removeSetBtnActive,
+              ]}
               onPress={() => onRemoveSet(item.exercise.id, setIndex)}
-              activeOpacity={0.85}
             >
               <Text style={styles.removeSetText}>×</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ))}
 
-        <TouchableOpacity
-          style={styles.addSetBtn}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.addSetBtn,
+            (pressed || hovered) && styles.secondaryBtnActive,
+          ]}
           onPress={() => onAddSet(item.exercise.id)}
-          activeOpacity={0.85}
         >
           <Text style={styles.addSetBtnText}>+ Add Set</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={[styles.smallBtn, styles.removeBtn]}
+        <View style={styles.selectedCardActions}>
+          <Pressable
+            style={({ pressed, hovered }) => [
+              styles.smallBtn,
+              styles.removeBtn,
+              (pressed || hovered) && styles.removeBtnActive,
+            ]}
             onPress={() => onRemoveExercise(item.exercise.id)}
-            activeOpacity={0.85}
           >
             <Text style={styles.smallBtnText}>Remove</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -524,21 +544,25 @@ export default function AddWorkoutScreen() {
       />
 
       <View style={styles.footerRow}>
-        <TouchableOpacity
-          style={styles.secondaryBtn}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.secondaryBtn,
+            (pressed || hovered) && styles.secondaryBtnActive,
+          ]}
           onPress={() => setModalVisible(true)}
-          activeOpacity={0.85}
         >
           <Text style={styles.secondaryBtnText}>Add exercises</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          style={styles.primaryBtn}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.primaryBtn,
+            (pressed || hovered) && styles.primaryBtnActive,
+          ]}
           onPress={finishWorkout}
-          activeOpacity={0.85}
         >
           <Text style={styles.primaryBtnText}>Save workout</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <Modal
@@ -551,13 +575,15 @@ export default function AddWorkoutScreen() {
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Exercise library</Text>
-              <TouchableOpacity
-                style={styles.modalClose}
+              <Pressable
+                style={({ pressed, hovered }) => [
+                  styles.modalClose,
+                  (pressed || hovered) && styles.secondaryBtnActive,
+                ]}
                 onPress={() => setModalVisible(false)}
-                activeOpacity={0.85}
               >
                 <Text style={styles.modalCloseText}>×</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <TextInput
@@ -676,7 +702,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  card: {
+  libraryCard: {
     backgroundColor: COLORS.CARD,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
@@ -685,42 +711,116 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 12,
   },
-
-  exerciseImage: {
+  libraryImageWrap: {
     width: 92,
-    height: 92,
+    alignSelf: 'stretch',
+    backgroundColor: '#141414',
+    borderRightWidth: 1,
+    borderRightColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  libraryExerciseImage: {
+    width: 74,
+    height: 74,
+    borderRadius: 12,
     backgroundColor: '#0B0B0B',
   },
-
-  cardBody: {
+  libraryCardBody: {
     flex: 1,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
   },
-
-  cardTitle: {
+  libraryCardTitle: {
     color: COLORS.TEXT,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '900',
   },
-
-  cardSub: {
+  libraryCardSub: {
     color: COLORS.MUTED,
-    fontSize: 12,
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  libraryCardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+
+  selectedCard: {
+    backgroundColor: COLORS.CARD,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 18,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    minHeight: 156,
+  },
+  selectedImageWrap: {
+    width: 104,
+    alignSelf: 'stretch',
+    backgroundColor: '#141414',
+    borderRightWidth: 1,
+    borderRightColor: COLORS.BORDER,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  selectedExerciseImage: {
+    width: 86,
+    height: 86,
+    borderRadius: 12,
+    backgroundColor: '#0B0B0B',
+  },
+  selectedCardBody: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+  },
+  selectedCardTitle: {
+    color: COLORS.TEXT,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  selectedCardSub: {
+    color: COLORS.MUTED,
+    fontSize: 13,
     marginTop: 4,
     fontWeight: '800',
     marginBottom: 10,
+  },
+  setLabelsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  setLabelSpacer: {
+    width: 24,
+  },
+  setInputLabel: {
+    width: 52,
+    color: COLORS.MUTED,
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'center',
   },
 
   setRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: 6,
+    marginBottom: 10,
+    width: '100%',
   },
 
   setNumberBox: {
-    width: 28,
+    width: 24,
     height: 36,
     borderRadius: 8,
     backgroundColor: COLORS.CARD_2,
@@ -732,27 +832,27 @@ const styles = StyleSheet.create({
 
   setNumberText: {
     color: COLORS.TEXT,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
   },
 
   smallInput: {
-    width: 70,
+    width: 52,
     height: 36,
     backgroundColor: COLORS.CARD_2,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     borderRadius: 8,
     color: COLORS.TEXT,
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
-    padding: 4,
+    paddingHorizontal: 6,
   },
 
   checkboxContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 2,
+    width: 24,
   },
 
   checkbox: {
@@ -778,8 +878,8 @@ const styles = StyleSheet.create({
   },
 
   removeSetBtn: {
-    width: 26,
-    height: 26,
+    width: 22,
+    height: 22,
     borderRadius: 8,
     backgroundColor: COLORS.CARD_2,
     borderWidth: 1,
@@ -787,10 +887,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  removeSetBtnActive: {
+    backgroundColor: '#1f1f1f',
+  },
 
   removeSetText: {
     color: COLORS.TEXT,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '900',
     marginTop: -1,
   },
@@ -812,11 +915,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
-
-  cardActions: {
+  selectedCardActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 4,
+    marginTop: 2,
   },
 
   smallBtn: {
@@ -827,6 +929,8 @@ const styles = StyleSheet.create({
 
   addBtn: { backgroundColor: COLORS.ACCENT },
   removeBtn: { backgroundColor: COLORS.DANGER },
+  addBtnActive: { backgroundColor: '#2d69c5' },
+  removeBtnActive: { backgroundColor: '#d64233' },
 
   smallBtnText: {
     color: COLORS.ACCENT_TEXT,
@@ -848,6 +952,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
   },
+  primaryBtnActive: {
+    backgroundColor: '#2d69c5',
+  },
 
   primaryBtnText: {
     color: COLORS.ACCENT_TEXT,
@@ -863,6 +970,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
+  },
+  secondaryBtnActive: {
+    backgroundColor: '#1f1f1f',
   },
 
   secondaryBtnText: {

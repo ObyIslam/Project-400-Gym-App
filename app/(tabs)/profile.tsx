@@ -126,7 +126,18 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Personal Info</Text>
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.cardTitle}>Personal Info</Text>
+          <Pressable
+            style={({ pressed, hovered }) => [
+              styles.cardActionBtn,
+              (pressed || hovered) && styles.cardActionBtnActive,
+            ]}
+            onPress={() => router.push('/screens/editprofile')}
+          >
+            <Text style={styles.cardActionBtnText}>Edit Profile</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Age</Text>
@@ -147,7 +158,29 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Weight Goals</Text>
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.cardTitle}>Weight Goals</Text>
+          <View style={styles.headerActionsWrap}>
+            <Pressable
+              style={({ pressed, hovered }) => [
+                styles.cardActionBtn,
+                (pressed || hovered) && styles.cardActionBtnActive,
+              ]}
+              onPress={() => router.push('/screens/logweight')}
+            >
+              <Text style={styles.cardActionBtnText}>Log Weight</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed, hovered }) => [
+                styles.cardActionBtn,
+                (pressed || hovered) && styles.cardActionBtnActive,
+              ]}
+              onPress={() => router.push('/screens/weighttracking')}
+            >
+              <Text style={styles.cardActionBtnText}>View Progress</Text>
+            </Pressable>
+          </View>
+        </View>
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Starting Weight</Text>
@@ -177,38 +210,6 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Actions</Text>
-
-        <Pressable
-          style={({ pressed, hovered }) => [
-            styles.actionBtn,
-            (pressed || hovered) && styles.actionBtnActive,
-          ]}
-          onPress={() => router.push('/screens/editprofile')}
-        >
-          <Text style={styles.actionBtnText}>Edit Profile</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed, hovered }) => [
-            styles.actionBtn,
-            (pressed || hovered) && styles.actionBtnActive,
-          ]}
-          onPress={() => router.push('/screens/logweight')}
-        >
-          <Text style={styles.actionBtnText}>Log Weight</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed, hovered }) => [
-            styles.actionBtn,
-            (pressed || hovered) && styles.actionBtnActive,
-          ]}
-          onPress={() => router.push('/screens/weighttracking')}
-        >
-          <Text style={styles.actionBtnText}>View Progress</Text>
-        </Pressable>
-
         <Pressable
           style={({ pressed, hovered }) => [
             styles.logoutBtn,
@@ -284,7 +285,36 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT,
     fontSize: 16,
     fontWeight: '900',
+  },
+
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
     marginBottom: 14,
+  },
+
+  headerActionsWrap: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+
+  cardActionBtn: {
+    backgroundColor: COLORS.ACCENT,
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+  },
+
+  cardActionBtnActive: {
+    backgroundColor: '#2d69c5',
+  },
+
+  cardActionBtnText: {
+    color: COLORS.TEXT,
+    fontSize: 12,
+    fontWeight: '800',
   },
 
   infoRow: {
@@ -308,21 +338,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     flexShrink: 1,
     textAlign: 'right',
-  },
-
-  actionBtn: {
-    backgroundColor: COLORS.ACCENT,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  actionBtnActive: { backgroundColor: '#2d69c5' },
-
-  actionBtnText: {
-    color: COLORS.TEXT,
-    fontSize: 14,
-    fontWeight: '900',
   },
 
   logoutBtn: {
