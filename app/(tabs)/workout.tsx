@@ -3,7 +3,7 @@ import { authFetch } from '@/app/lib/api';
 import Entypo from '@expo/vector-icons/Entypo';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 const COLORS = {
   BG: '#121212',
@@ -83,9 +83,11 @@ export default function HomeScreen() {
     const exerciseCount = item.exercises?.length ?? 0;
 
     return (
-      <TouchableOpacity
-        style={styles.savedRoutineItem}
-        activeOpacity={0.85}
+      <Pressable
+        style={({ pressed, hovered }) => [
+          styles.savedRoutineItem,
+          (pressed || hovered) && styles.secondaryPressState,
+        ]}
         onPress={() => router.push(`/screens/routine/${item.id}`)}
       >
         <View style={{ flex: 1 }}>
@@ -96,12 +98,12 @@ export default function HomeScreen() {
         </View>
 
         <Entypo name="chevron-right" size={18} color={COLORS.MUTED} />
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.topBar}>
         <Text style={styles.topTitle}>Workout</Text>
         <Text style={styles.topSubtitle}>Start a workout or manage routines</Text>
@@ -120,13 +122,15 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.primaryBtn}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.primaryBtn,
+            (pressed || hovered) && styles.primaryBtnActive,
+          ]}
           onPress={() => router.push('/screens/addworkoutscreen')}
-          activeOpacity={0.85}
         >
           <Text style={styles.primaryBtnText}>Start Empty Workout</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
@@ -140,16 +144,18 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          activeOpacity={0.85}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.secondaryBtn,
+            (pressed || hovered) && styles.secondaryPressState,
+          ]}
           onPress={() => router.push('/screens/addroutinescreen')}
         >
           <View style={styles.btnRow}>
             <Entypo name="book" size={18} color={COLORS.TEXT} />
             <Text style={styles.secondaryBtnText}>New Routine</Text>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
@@ -165,16 +171,18 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          activeOpacity={0.85}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.secondaryBtn,
+            (pressed || hovered) && styles.secondaryPressState,
+          ]}
           onPress={() => router.push('/screens/exercise-analysis' as any)}
         >
           <View style={styles.btnRow}>
             <Entypo name="camera" size={18} color={COLORS.TEXT} />
             <Text style={styles.secondaryBtnText}>Analyze Exercise</Text>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
@@ -200,12 +208,13 @@ export default function HomeScreen() {
           />
         )}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.BG, padding: 18 },
+  container: { flex: 1, backgroundColor: COLORS.BG },
+  content: { padding: 16, paddingBottom: 22 },
 
   topBar: {
     paddingTop: 14,
@@ -281,6 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
   },
+  primaryBtnActive: { backgroundColor: '#2d69c5' },
 
   primaryBtnText: {
     color: COLORS.ACCENT_TEXT,
@@ -296,6 +306,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
   },
+  secondaryPressState: { backgroundColor: '#1f1f1f' },
 
   btnRow: {
     flexDirection: 'row',

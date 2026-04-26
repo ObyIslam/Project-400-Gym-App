@@ -5,11 +5,11 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -179,37 +179,45 @@ export default function ProfileScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Actions</Text>
 
-        <TouchableOpacity
-          style={styles.actionBtn}
-          activeOpacity={0.85}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.actionBtn,
+            (pressed || hovered) && styles.actionBtnActive,
+          ]}
           onPress={() => router.push('/screens/editprofile')}
         >
           <Text style={styles.actionBtnText}>Edit Profile</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          style={styles.actionBtn}
-          activeOpacity={0.85}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.actionBtn,
+            (pressed || hovered) && styles.actionBtnActive,
+          ]}
           onPress={() => router.push('/screens/logweight')}
         >
           <Text style={styles.actionBtnText}>Log Weight</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          style={styles.actionBtn}
-          activeOpacity={0.85}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.actionBtn,
+            (pressed || hovered) && styles.actionBtnActive,
+          ]}
           onPress={() => router.push('/screens/weighttracking')}
         >
           <Text style={styles.actionBtnText}>View Progress</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          activeOpacity={0.85}
+        <Pressable
+          style={({ pressed, hovered }) => [
+            styles.logoutBtn,
+            (pressed || hovered) && styles.logoutBtnActive,
+          ]}
           onPress={handleLogout}
         >
           <Text style={styles.logoutBtnText}>Log Out</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -217,7 +225,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.BG },
-  content: { padding: 18, paddingBottom: 24 },
+  content: { padding: 16, paddingBottom: 24 },
 
   center: {
     flex: 1,
@@ -309,6 +317,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  actionBtnActive: { backgroundColor: '#2d69c5' },
 
   actionBtnText: {
     color: COLORS.TEXT,
@@ -323,6 +332,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
+  logoutBtnActive: { backgroundColor: '#d64233' },
 
   logoutBtnText: {
     color: COLORS.TEXT,

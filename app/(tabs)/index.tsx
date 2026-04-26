@@ -4,10 +4,11 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -51,6 +52,8 @@ interface Workout {
 export default function HomeScreen() {
   const router = useRouter();
   const { token, isLoading } = useAuth();
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 380;
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -197,21 +200,25 @@ export default function HomeScreen() {
               <Text style={styles.countBadgeText}>{exerciseCount}</Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.editBtn}
+            <Pressable
+              style={({ pressed, hovered }) => [
+                styles.editBtn,
+                (pressed || hovered) && styles.editBtnActive,
+              ]}
               onPress={() => router.push(`/screens/workouts/${item.id}`)}
-              activeOpacity={0.85}
             >
               <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={styles.deleteBtn}
+            <Pressable
+              style={({ pressed, hovered }) => [
+                styles.deleteBtn,
+                (pressed || hovered) && styles.deleteBtnActive,
+              ]}
               onPress={() => deleteWorkout(item.id)}
-              activeOpacity={0.85}
             >
               <Text style={styles.deleteBtnText}>Delete</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
 
@@ -232,7 +239,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, isNarrow && styles.topBarCompact]}>
         <Text style={styles.topTitle}>Home</Text>
         <Text style={styles.topSubtitle}>
           {stats.totalWorkouts} workouts • {stats.totalExercises} exercises • {stats.totalSets} sets
@@ -243,7 +250,7 @@ export default function HomeScreen() {
         data={workouts}
         keyExtractor={(w) => w.id.toString()}
         renderItem={renderWorkout}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, isNarrow && styles.listContentCompact]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -275,6 +282,11 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.BORDER,
     backgroundColor: COLORS.BG,
   },
+  topBarCompact: {
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 12,
+  },
 
   topTitle: {
     color: COLORS.TEXT,
@@ -293,6 +305,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 18,
+  },
+  listContentCompact: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
   },
 
   workoutCard: {
@@ -352,6 +368,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
+  deleteBtnActive: { backgroundColor: '#d64233' },
 
   deleteBtnText: {
     color: COLORS.TEXT,
@@ -478,6 +495,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
+  editBtnActive: { backgroundColor: '#2d69c5' },
 
   editBtnText: {
     color: COLORS.TEXT,
